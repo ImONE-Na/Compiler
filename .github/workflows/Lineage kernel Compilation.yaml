@@ -76,7 +76,8 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential device-tree-compiler ninja-build
           sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
-          sudo apt install -y libssl-dev flex bison bc libelf-dev libsepolicy-dev kmod python3 python3-pip python3-pyelftools
+          # Corrected package name: libsepol-dev instead of libsepolicy-dev
+          sudo apt install -y libssl-dev flex bison bc libelf-dev libsepol-dev kmod python3 python3-pip python3-pyelftools
           echo " "
           echo "✅ Build environment setup complete. All dependencies installed."
           echo " "
