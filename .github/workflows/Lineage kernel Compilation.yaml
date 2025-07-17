@@ -135,7 +135,9 @@ jobs:
                HOSTCXX="ccache g++" \
                HOSTCFLAGS="" \
                HOST_LDFLAGS="" \
-               HOST_CPPFLAGS="" # Ensure problematic flags are cleared for host tools
+               HOST_CPPFLAGS="" \
+               HOST_ASFLAGS="" \
+               HOST_AFLAGS="" # Added comprehensive host flag clearing for all host tool compilation
           echo " "
           echo "🎉 Kernel compilation finished successfully!"
           echo " "
