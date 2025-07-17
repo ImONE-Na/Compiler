@@ -32,32 +32,38 @@ jobs:
           echo "Starting the kernel compilation workflow for your curtana device..."
           echo " "
 
-      - name: 🌟 Checkout Main Repository
+      - name: 🌟 Checkout Main Repository Action
         uses: actions/checkout@v4
         with:
           path: main_repo
+
+      - name: 🌟 Main Repository Checkout Message
         run: |
           echo " "
           echo "🌟 Main repository checked out successfully."
           echo " "
 
-      - name: 🌳 Checkout Kernel Source
+      - name: 🌳 Checkout Kernel Source Action
         uses: actions/checkout@v4
         with:
           repository: xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250
           ref: lineage-22.2
           path: kernel_source
+
+      - name: 🌳 Kernel Source Checkout Message
         run: |
           echo " "
           echo "🌳 Kernel source checked out: 'xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250' (branch: 'lineage-22.2')"
           echo " "
 
-      - name: 📦 Checkout AnyKernel3
+      - name: 📦 Checkout AnyKernel3 Action
         uses: actions/checkout@v4
         with:
           repository: ImONE-Na/AnyKernel3
           ref: master
           path: AnyKernel3
+
+      - name: 📦 AnyKernel3 Checkout Message
         run: |
           echo " "
           echo "📦 AnyKernel3 repository checked out: 'ImONE-Na/AnyKernel3' (branch: 'master')"
@@ -75,10 +81,12 @@ jobs:
           echo "✅ Build environment setup complete. All dependencies installed."
           echo " "
 
-      - name: ⚡ Setup Ccache for Speedup
+      - name: ⚡ Setup Ccache for Speedup Action
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           max-size: 5G
+
+      - name: ⚡ Ccache Setup Message
         run: |
           echo " "
           echo "⚡ Ccache configured with 5GB cache size for faster compilation times."
@@ -181,12 +189,14 @@ jobs:
           echo "🎉 Flashable zip created: 'LineageOS-Kernel-curtana-${{ github.run_id }}.zip'"
           echo " "
 
-      - name: ⬆️ Upload Flashable Zip as Artifact
+      - name: ⬆️ Upload Flashable Zip as Artifact Action
         uses: actions/upload-artifact@v4
         with:
           name: LineageOS-Kernel-curtana
           path: AnyKernel3/LineageOS-Kernel-curtana-*.zip
           retention-days: 7
+
+      - name: ⬆️ Upload Artifact Message
         run: |
           echo " "
           echo "⬆️ Uploading the flashable zip as a workflow artifact for easy download..."
