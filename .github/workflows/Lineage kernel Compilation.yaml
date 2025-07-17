@@ -131,7 +131,9 @@ jobs:
                CXX="ccache g++" \
                CROSS_COMPILE=${CROSS_COMPILE} \
                CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
-               HOSTCFLAGS="" # Added to fix '-mlittle-endian' error for host tools
+               HOSTCFLAGS="" \
+               HOST_LDFLAGS="" \
+               HOST_CPPFLAGS="" # Added to comprehensively fix '-mlittle-endian' error for host tools
           echo " "
           echo "🎉 Kernel compilation finished successfully!"
           echo " "
