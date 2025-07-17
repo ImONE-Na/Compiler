@@ -42,14 +42,18 @@ jobs:
         run: |
           sudo apt-get update
           # Add Ubuntu Toolchain Test Builds PPA for GCC 7
-          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || echo "PPA addition failed, trying alternative"
+          # Add alternative PPA for GCC 7.5
+          sudo add-apt-repository -y ppa:jonathonf/gcc-7.5 || echo "Alternative PPA addition failed"
           sudo apt-get update
+          # Install GCC 7 and related packages
           sudo apt-get install -y git bc bash coreutils diffutils findutils \
             g++-7 gcc-7 gcc-7-multilib g++-7-multilib \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
             gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
             make python3 flex bison libssl-dev \
-            libncurses5-dev libncursesw5-dev zip
+            libncurses5-dev libncursesw5-dev zip || { echo "Package installation failed"; exit 1; }
+          # Set up alternatives
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 100
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 100
           sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-7 100
