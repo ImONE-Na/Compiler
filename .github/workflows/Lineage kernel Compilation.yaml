@@ -76,7 +76,6 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential device-tree-compiler ninja-build
           sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
-          # Corrected package name: libsepol-dev instead of libsepolicy-dev
           sudo apt install -y libssl-dev flex bison bc libelf-dev libsepol-dev kmod python3 python3-pip python3-pyelftools
           echo " "
           echo "✅ Build environment setup complete. All dependencies installed."
@@ -110,8 +109,11 @@ jobs:
           echo "📝 Applying the default defconfig: 'vendor/xiaomi/miatoll_defconfig'..."
           cd kernel_source
           make O=${OUT_DIR} ARCH=${ARCH} vendor/xiaomi/miatoll_defconfig
+          # Fix for -fstack-protector-strong error: Disable CONFIG_CC_STACKPROTECTOR_STRONG
+          echo "  - Disabling CONFIG_CC_STACKPROTECTOR_STRONG to fix compiler compatibility issue..."
+          sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/' "${OUT_DIR}/.config"
           echo " "
-          echo "✅ Kernel defconfig applied."
+          echo "✅ Kernel defconfig applied and stack protector issue addressed."
           echo " "
 
       - name: 🚀 Compile Kernel
