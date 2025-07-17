@@ -26,6 +26,10 @@ jobs:
           ref: curtana-q-oss
           fetch-depth: 1
 
+      # Debug step to check if runner picks up
+      - name: Debug Runner
+        run: echo "Runner is working! This is ubuntu-20.04."
+
       # Set up ccache to speed up compilation
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
