@@ -1,0 +1,201 @@
+name: Lineage kernel Compilation
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_kernel:
+    name: 🏗️Kernel Building ...
+    runs-on: ubuntu-latest
+
+    env:
+      KBUILD_BUILD_USER: MINHAZ
+      KBUILD_BUILD_HOST: POTATO
+      ARCH: arm64
+      SUBARCH: arm64
+      CROSS_COMPILE: aarch64-linux-gnu-
+      CROSS_COMPILE_ARM32: arm-linux-gnueabi-
+      OUT_DIR: out
+
+    steps:
+      - name: 🚀 Start Workflow
+        run: |
+          echo " "
+          echo "##############################################"
+          echo "#                                            #"
+          echo "#    🚀 LINEAGE OS KERNEL COMPILATION 🚀    #"
+          echo "#                                            #"
+          echo "##############################################"
+          echo " "
+          echo "Starting the kernel compilation workflow for your curtana device..."
+          echo " "
+
+      - name: 🌟 Checkout Main Repository
+        uses: actions/checkout@v4
+        with:
+          path: main_repo
+        run: |
+          echo " "
+          echo "🌟 Main repository checked out successfully."
+          echo " "
+
+      - name: 🌳 Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          repository: xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250
+          ref: lineage-22.2
+          path: kernel_source
+        run: |
+          echo " "
+          echo "🌳 Kernel source checked out: 'xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250' (branch: 'lineage-22.2')"
+          echo " "
+
+      - name: 📦 Checkout AnyKernel3
+        uses: actions/checkout@v4
+        with:
+          repository: ImONE-Na/AnyKernel3
+          ref: master
+          path: AnyKernel3
+        run: |
+          echo " "
+          echo "📦 AnyKernel3 repository checked out: 'ImONE-Na/AnyKernel3' (branch: 'master')"
+          echo " "
+
+      - name: ⚙️ Setup Build Environment & Install Dependencies
+        run: |
+          echo " "
+          echo "✨ Setting up the build environment and installing all necessary dependencies..."
+          sudo apt update
+          sudo apt install -y build-essential device-tree-compiler ninja-build
+          sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
+          sudo apt install -y libssl-dev flex bison bc libelf-dev libsepolicy-dev kmod python3 python3-pip python3-pyelftools
+          echo " "
+          echo "✅ Build environment setup complete. All dependencies installed."
+          echo " "
+
+      - name: ⚡ Setup Ccache for Speedup
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          max-size: 5G
+        run: |
+          echo " "
+          echo "⚡ Ccache configured with 5GB cache size for faster compilation times."
+          echo " "
+
+      - name: 🧹 Clean Kernel Source
+        run: |
+          echo " "
+          echo "🧼 Cleaning kernel source with 'mrproper' and 'clean' commands to ensure a fresh build..."
+          cd kernel_source
+          make O=${OUT_DIR} ARCH=${ARCH} mrproper
+          make O=${OUT_DIR} ARCH=${ARCH} clean
+          echo " "
+          echo "✅ Kernel source cleaned successfully."
+          echo " "
+
+      - name: 📝 Configure Kernel Defconfig
+        run: |
+          echo " "
+          echo "📝 Applying the default defconfig: 'vendor/xiaomi/miatoll_defconfig'..."
+          cd kernel_source
+          make O=${OUT_DIR} ARCH=${ARCH} vendor/xiaomi/miatoll_defconfig
+          echo " "
+          echo "✅ Kernel defconfig applied."
+          echo " "
+
+      - name: 🚀 Compile Kernel
+        run: |
+          echo " "
+          echo "🚀 Starting the main kernel compilation process using GCC..."
+          cd kernel_source
+          GCC_VERSION=$(aarch64-linux-gnu-gcc --version | head -n 1)
+          echo "Detected GCC Compiler Version: $GCC_VERSION"
+          echo "GCC_VERSION=$GCC_VERSION" >> $GITHUB_ENV
+
+          make -j$(nproc) O=${OUT_DIR} \
+               ARCH=${ARCH} \
+               CC="ccache gcc" \
+               CXX="ccache g++" \
+               CROSS_COMPILE=${CROSS_COMPILE} \
+               CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32}
+          echo " "
+          echo "🎉 Kernel compilation finished successfully!"
+          echo " "
+
+      - name: 🧩 Prepare AnyKernel3 with Compiled Artifacts
+        run: |
+          echo " "
+          echo "📦 Preparing AnyKernel3 directory with compiled kernel artifacts..."
+          KERNEL_OUT_DIR="${{ github.workspace }}/kernel_source/${OUT_DIR}"
+          ANYKERNEL_DIR="${{ github.workspace }}/AnyKernel3"
+
+          cp "${KERNEL_OUT_DIR}/arch/arm64/boot/Image.gz" "${ANYKERNEL_DIR}/"
+          echo "  - Copied Image.gz"
+
+          cp "${KERNEL_OUT_DIR}/arch/arm64/boot/dtbo.img" "${ANYKERNEL_DIR}/"
+          echo "  - Copied dtbo.img"
+
+          if [ -f "${KERNEL_OUT_DIR}/arch/arm64/boot/dtb.img" ]; then
+            cp "${KERNEL_OUT_DIR}/arch/arm64/boot/dtb.img" "${ANYKERNEL_DIR}/"
+            echo "  - Copied dtb.img"
+          elif [ -f "${KERNEL_OUT_DIR}/arch/arm64/boot/Image.gz-dtb" ]; then
+            cp "${KERNEL_OUT_DIR}/arch/arm64/boot/Image.gz-dtb" "${ANYKERNEL_DIR}/dtb.img"
+            echo "  - Copied Image.gz-dtb and renamed to dtb.img for AnyKernel3 compatibility."
+          else
+            echo "  - Warning: Neither dtb.img nor Image.gz-dtb found in kernel output."
+            echo "    AnyKernel3 might fail if dtb.img is required and not present. Please verify kernel output."
+          fi
+
+          mkdir -p "${ANYKERNEL_DIR}/modules/system/lib/modules"
+          find "${KERNEL_OUT_DIR}" -name "*.ko" -exec cp {} "${ANYKERNEL_DIR}/modules/system/lib/modules/" \;
+          echo "  - Copied all kernel modules (*.ko) to AnyKernel3"
+
+          echo " "
+          echo "✅ AnyKernel3 prepared with all necessary files."
+          echo " "
+
+      - name: ✏️ Update AnyKernel3 Script (anykernel.sh)
+        run: |
+          echo " "
+          echo "✏️ Updating 'anykernel.sh' script with kernel build information..."
+          ANYKERNEL_SH="${{ github.workspace }}/AnyKernel3/anykernel.sh"
+          sed -i "s@kernel.string=.*@kernel.string=\" Lineage Kernel \"@" "${ANYKERNEL_SH}"
+          echo "  - Updated kernel.string to 'Lineage Kernel'"
+          sed -i "s@kernel.compiler=.*@kernel.compiler=\"${{ env.GCC_VERSION }}\"@" "${ANYKERNEL_SH}"
+          echo "  - Updated kernel.compiler to: ${{ env.GCC_VERSION }}"
+          sed -i "s@kernel.version=.*@kernel.version=4.14.336@" "${ANYKERNEL_SH}"
+          echo "  - Updated kernel.version to 4.14.336"
+          echo " "
+          echo "✅ 'anykernel.sh' updated successfully."
+          echo " "
+
+      - name: 📦 Create Flashable Zip
+        run: |
+          echo " "
+          echo "📦 Zipping the AnyKernel3 package to create the final flashable zip..."
+          cd AnyKernel3
+          zip -r9 "LineageOS-Kernel-curtana-${{ github.run_id }}.zip" ./*
+          echo " "
+          echo "🎉 Flashable zip created: 'LineageOS-Kernel-curtana-${{ github.run_id }}.zip'"
+          echo " "
+
+      - name: ⬆️ Upload Flashable Zip as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LineageOS-Kernel-curtana
+          path: AnyKernel3/LineageOS-Kernel-curtana-*.zip
+          retention-days: 7
+        run: |
+          echo " "
+          echo "⬆️ Uploading the flashable zip as a workflow artifact for easy download..."
+          echo " "
+          echo "✅ Flashable zip uploaded successfully!"
+          echo " "
+          echo "##############################################"
+          echo "#                                            #"
+          echo "#   ✅ KERNEL COMPILATION WORKFLOW COMPLETE!  #"
+          echo "#                                            #"
+          echo "##############################################"
+          echo " "
