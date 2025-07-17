@@ -1,12 +1,6 @@
-name: Build OSS Kernel for Redmi Note 9 Pro (Curtana)
+name: Build OSS Kernel for Redmi Note 9 Pro (Curtana) with Proton Clang
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 # Add permissions for artifact upload
@@ -34,44 +28,33 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ccache-curtana-${{ github.sha }}
           max-size: 5G
 
-      # Add repository for GCC 7 and install dependencies
+      # Clone Proton Clang
+      - name: Clone Proton Clang
+        run: |
+          git clone --depth=1 --branch master https://github.com/kdrag0n/proton-clang.git proton-clang
+          echo "PROTON_CLANG_DIR=$(pwd)/proton-clang" >> $GITHUB_ENV
+
+      # Install basic dependencies
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          # Add Ubuntu Toolchain Test Builds PPA for GCC 7
-          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || echo "PPA addition failed, trying alternative"
-          # Add alternative PPA for GCC 7.5
-          sudo add-apt-repository -y ppa:jonathonf/gcc-7.5 || echo "Alternative PPA addition failed"
-          sudo apt-get update
-          # Install GCC 7 and related packages
           sudo apt-get install -y git bc bash coreutils diffutils findutils \
-            g++-7 gcc-7 gcc-7-multilib g++-7-multilib \
-            gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
-            make python3 flex bison libssl-dev \
-            libncurses5-dev libncursesw5-dev zip || { echo "Package installation failed"; exit 1; }
-          # Set up alternatives
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 100
-          sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-7 100
-          sudo update-alternatives --install /usr/bin/aarch64-linux-gnu-g++ aarch64-linux-gnu-g++ /usr/bin/aarch64-linux-gnu-g++-7 100
-          sudo update-alternatives --install /usr/bin/arm-linux-gnueabihf-gcc arm-linux-gnueabihf-gcc /usr/bin/arm-linux-gnueabihf-gcc-7 100
-          sudo update-alternatives --install /usr/bin/arm-linux-gnueabihf-g++ arm-linux-gnueabihf-g++ /usr/bin/arm-linux-gnueabihf-g++-7 100
+            make python3 flex bison libssl-dev libncurses5-dev libncursesw5-dev zip
 
-      # Set up environment variables
+      # Set up environment variables for Proton Clang
       - name: Set Environment Variables
         run: |
+          echo "PATH=${{ env.PROTON_CLANG_DIR }}/bin:$PATH" >> $GITHUB_ENV
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
           echo "ARCH=arm64" >> $GITHUB_ENV
           echo "SUBARCH=arm64" >> $GITHUB_ENV
           echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
-          echo "CROSS_COMPILE_ARM32=arm-linux-gnueabihf-" >> $GITHUB_ENV
+          echo "CROSS_COMPILE_COMPAT=arm-linux-gnueabihf-" >> $GITHUB_ENV  # For 32-bit vDSO if needed
           echo "KBUILD_BUILD_USER=MINHAZ" >> $GITHUB_ENV
           echo "KBUILD_BUILD_HOST=POTATO" >> $GITHUB_ENV
-          echo "CC=ccache gcc" >> $GITHUB_ENV
-          echo "CXX=ccache g++" >> $GITHUB_ENV
 
       # Create out directory if it doesn't exist
       - name: Create Output Directory
@@ -91,7 +74,7 @@ jobs:
           make -j$(nproc) O=out CC="${CC}" CXX="${CXX}" \
             ARCH=${ARCH} SUBARCH=${SUBARCH} \
             CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
+            CROSS_COMPILE_COMPAT=${CROSS_COMPILE_COMPAT} \
             2>&1 | tee kernel.log
 
       # Compile and install modules
@@ -100,7 +83,7 @@ jobs:
           make -j$(nproc) O=out CC="${CC}" CXX="${CXX}" \
             ARCH=${ARCH} SUBARCH=${SUBARCH} \
             CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_ARM32=${CROSS_COMPILE_ARM32} \
+            CROSS_COMPILE_COMPAT=${CROSS_COMPILE_COMPAT} \
             INSTALL_MOD_PATH=out modules_install
 
       # Checkout AnyKernel3
@@ -114,7 +97,7 @@ jobs:
       # Customize AnyKernel3
       - name: Customize AnyKernel3
         run: |
-          sed -i 's/kernel.compiler=.*/kernel.compiler=GCC 7/' AnyKernel3/anykernel.sh
+          sed -i 's/kernel.compiler=.*/kernel.compiler=Proton Clang/' AnyKernel3/anykernel.sh
           sed -i 's/kernel.version=.*/kernel.version=4.14.117/' AnyKernel3/anykernel.sh
 
       # Copy kernel image, dtb, dtbo, and modules to AnyKernel3
