@@ -1,124 +1,153 @@
-name: Build OSS Kernel for Redmi Note 9 Pro (Curtana) with Proton Clang
+# This is a GitHub Actions workflow to build an Android kernel.
+#
+# To use this workflow:
+# 1. Create a new repository on GitHub.
+# 2. Create a file named .github/workflows/build-kernel.yml inside your repository.
+# 3. Copy and paste the content of this file into build-kernel.yml.
+# 4. Commit and push the file to your repository.
+# 5. Go to the "Actions" tab in your repository and you should see the workflow.
+# 6. You can manually trigger the workflow by clicking on "Run workflow".
 
+name: Build OSS Kernel for Curtana
+
+# Controls when the action will run.
 on:
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
-
-# Add permissions for artifact upload
-permissions:
-  actions: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # The type of runner that the job will run on
+    runs-on: ubuntu-20.04
 
     steps:
-      # Checkout the kernel source
+      # 1. Checkout the kernel source code
       - name: Checkout Kernel Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           repository: MiCode/Xiaomi_Kernel_OpenSource
           ref: curtana-q-oss
-          fetch-depth: 1
+          # Fetch all history for all tags and branches
+          fetch-depth: 0
 
-      # Debug step to check if runner picks up
-      - name: Debug Runner
-        run: echo "Runner is working! This is ubuntu-latest."
+      # 2. Install required dependencies
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
+          git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev \
+          liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libwxgtk3.0-gtk3-dev libxml2 \
+          libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev \
+          crossbuild-essential-arm64 crossbuild-essential-armhf
 
-      # Set up ccache to speed up compilation
+      # 3. Setup ccache for faster builds
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          max-size: 5G
+          key: ${{ github.job }}
+          max-size: 5G # Set ccache size to 5GB as requested
 
-      # Clone Proton Clang
-      - name: Clone Proton Clang
-        run: |
-          git clone --depth=1 --branch master https://github.com/kdrag0n/proton-clang.git proton-clang
-          echo "PROTON_CLANG_DIR=$(pwd)/proton-clang" >> $GITHUB_ENV
+      # 4. Checkout Proton Clang compiler
+      - name: Checkout Proton Clang
+        uses: actions/checkout@v3
+        with:
+          repository: kdrag0n/proton-clang
+          ref: master
+          path: proton-clang
+          # Fetch all history for all tags and branches
+          fetch-depth: 0
 
-      # Install basic dependencies
-      - name: Install Dependencies
+      # 5. Set up build environment variables
+      - name: Set up build environment
         run: |
-          sudo apt-get update
-          sudo apt-get install -y git bc bash coreutils diffutils findutils \
-            make python3 flex bison libssl-dev libncurses5-dev libncursesw5-dev zip
-
-      # Set up environment variables for Proton Clang
-      - name: Set Environment Variables
-        run: |
-          echo "PATH=${{ env.PROTON_CLANG_DIR }}/bin:$PATH" >> $GITHUB_ENV
-          echo "CC=clang" >> $GITHUB_ENV
-          echo "CXX=clang++" >> $GITHUB_ENV
+          # Set environment variables for the build
+          # These will be available to all subsequent steps
           echo "ARCH=arm64" >> $GITHUB_ENV
           echo "SUBARCH=arm64" >> $GITHUB_ENV
-          echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
-          echo "CROSS_COMPILE_COMPAT=arm-linux-gnueabihf-" >> $GITHUB_ENV  # For 32-bit vDSO if needed
           echo "KBUILD_BUILD_USER=MINHAZ" >> $GITHUB_ENV
           echo "KBUILD_BUILD_HOST=POTATO" >> $GITHUB_ENV
-
-      # Create out directory if it doesn't exist
-      - name: Create Output Directory
-        run: |
+          # Set path for the clang compiler
+          CLANG_DIR=$(pwd)/proton-clang
+          echo "PATH=${CLANG_DIR}/bin:${PATH}" >> $GITHUB_ENV
+          # Set cross compile variables
+          echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+          echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
+          # Create the output directory if it doesn't exist
           if [ ! -d "out" ]; then
             mkdir out
           fi
 
-      # Compile defconfig
-      - name: Generate Defconfig
+      # 6. Make the defconfig
+      - name: Make defconfig
         run: |
           make O=out vendor/atoll-perf_defconfig
 
-      # Compile kernel
+      # 7. Compile the kernel
       - name: Compile Kernel
         run: |
-          make -j$(nproc) O=out CC="${CC}" CXX="${CXX}" \
-            ARCH=${ARCH} SUBARCH=${SUBARCH} \
-            CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_COMPAT=${CROSS_COMPILE_COMPAT} \
-            2>&1 | tee kernel.log
+          # Get the number of available CPU cores
+          NPROC=$(nproc --all)
+          # Start the kernel compilation
+          make -j${NPROC} O=out \
+               CC="ccache clang" \
+               CXX="ccache clang" \
+               AR="llvm-ar" \
+               NM="llvm-nm" \
+               OBJCOPY="llvm-objcopy" \
+               OBJDUMP="llvm-objdump" \
+               STRIP="llvm-strip" \
+               LD="ld.lld"
 
-      # Compile and install modules
+      # 8. Compile and install modules
       - name: Compile and Install Modules
         run: |
-          make -j$(nproc) O=out CC="${CC}" CXX="${CXX}" \
-            ARCH=${ARCH} SUBARCH=${SUBARCH} \
-            CROSS_COMPILE=${CROSS_COMPILE} \
-            CROSS_COMPILE_COMPAT=${CROSS_COMPILE_COMPAT} \
-            INSTALL_MOD_PATH=out modules_install
+          make O=out INSTALL_MOD_PATH=../modules_install modules_install
 
-      # Checkout AnyKernel3
+      # 9. Checkout AnyKernel3
       - name: Checkout AnyKernel3
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           repository: ImONE-Na/AnyKernel3
           ref: master
           path: AnyKernel3
 
-      # Customize AnyKernel3
-      - name: Customize AnyKernel3
+      # 10. Prepare files for AnyKernel3
+      - name: Prepare AnyKernel3 files
         run: |
-          sed -i 's/kernel.compiler=.*/kernel.compiler=Proton Clang/' AnyKernel3/anykernel.sh
+          # Get the Clang version string
+          CLANG_VERSION=$(${{ env.CLANG_DIR }}/bin/clang --version | head -n 1)
+
+          # Customize anykernel.sh
+          sed -i 's/kernel.string=.*/kernel.string=OSS Kernel by MINHAZ POTATO/' AnyKernel3/anykernel.sh
+          sed -i "s/kernel.compiler=.*/kernel.compiler=${CLANG_VERSION}/" AnyKernel3/anykernel.sh
           sed -i 's/kernel.version=.*/kernel.version=4.14.117/' AnyKernel3/anykernel.sh
 
-      # Copy kernel image, dtb, dtbo, and modules to AnyKernel3
-      - name: Copy Files to AnyKernel3
-        run: |
-          cp out/arch/arm64/boot/Image.gz AnyKernel3/
-          cp out/arch/arm64/boot/dtbo.img AnyKernel3/ || true
-          cp out/arch/arm64/boot/dtb.img AnyKernel3/ || true
-          mkdir -p AnyKernel3/modules
-          find out/lib/modules -type f -name "*.ko" -exec cp {} AnyKernel3/modules/ \;
+          # Copy compiled kernel artifacts to AnyKernel3 directory
+          cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/Image.gz-dtb
+          cp out/arch/arm64/boot/dtbo.img AnyKernel3/dtbo.img
+          
+          # Copy modules to AnyKernel3 directory
+          # The modules are installed in modules_install/lib/modules/<kernel_version>/
+          # We need to find that directory and copy its contents
+          MODULES_DIR=$(find modules_install/lib/modules -type d -name "4.14.*")
+          if [ -d "${MODULES_DIR}" ]; then
+            mkdir -p AnyKernel3/modules/system/lib/modules
+            cp -r ${MODULES_DIR}/* AnyKernel3/modules/system/lib/modules/
+          else
+            echo "Kernel modules directory not found!"
+          fi
 
-      # Create flashable zip
+      # 11. Create Flashable Zip
       - name: Create Flashable Zip
-        working-directory: AnyKernel3
         run: |
-          zip -r9 ../OSS-Kernel-Curtana.zip * -x .git README.md *placeholder
+          cd AnyKernel3
+          zip -r9 ../OSS-Kernel-curtana-$(date +%Y%m%d-%H%M).zip .
+          cd ..
 
-      # Upload artifact
-      - name: Upload Flashable Zip as Artifact
-        uses: actions/upload-artifact@v4
+      # 12. Upload the flashable zip as an artifact
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: OSS-Kernel-Curtana
-          path: OSS-Kernel-Curtana.zip
-          retention-days: 7
+          name: Flashable-Kernel-Zip
+          path: ./*.zip
+
