@@ -40,9 +40,11 @@ jobs:
         tar -xf llvm.tar.xz -C llvm-toolchain --strip-components=1
         
         echo "Setting LLVM environment variables..."
-        export PATH="$GITHUB_WORKSPACE/llvm-toolchain/bin:$PATH"
+        # Set LLVM_TOOLCHAIN_PATH as an environment variable for subsequent steps
         echo "LLVM_TOOLCHAIN_PATH=$GITHUB_WORKSPACE/llvm-toolchain" >> $GITHUB_ENV
-        echo "PATH=$GITHUB_WORKSPACE/llvm-toolchain/bin:$PATH" >> $GITHUB_ENV # Ensure LLVM bin is in PATH for subsequent steps
+        # Add LLVM bin directory to PATH for subsequent steps
+        echo "$GITHUB_WORKSPACE/llvm-toolchain/bin" >> $GITHUB_PATH 
+        
         echo "Clang version:"
         clang --version
         echo "LLVM setup complete."
@@ -54,28 +56,23 @@ jobs:
         which arm-linux-gnueabihf-gcc && echo "arm-linux-gnueabihf-gcc is installed." || { echo "Error: arm-linux-gnueabihf-gcc not found!"; exit 1; }
         which aarch64-linux-gnu-gcc && echo "aarch64-linux-gnu-gcc is installed." || { echo "Error: aarch64-linux-gnu-gcc not found!"; exit 1; }
         which clang && echo "clang is installed." || { echo "Error: clang not found!"; exit 1; }
-        
+        which ccache && echo "ccache is installed." || { echo "Error: ccache not found!"; exit 1; } # Added ccache check here
         echo "Environment setup complete."
 
     - name: Initialize ccache
-      # This step uses the ccache action to restore/save the cache
+      # This step only uses the ccache action for caching
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ github.job }}
         max-size: 5G
 
     - name: Configure ccache Environment Variables
-      # This step sets environment variables for ccache for subsequent compilation steps
+      # This step only runs shell commands to set ccache environment variables
       shell: bash
       run: |
         echo "--> Configuring ccache environment variables..."
-        # Ensure ccache is in PATH from the previous setup step if not already
-        export CCACHE_EXEC=$(which ccache)
-        if [ -z "$CCACHE_EXEC" ]; then
-          echo "Error: ccache executable not found in PATH."
-          exit 1
-        fi
-        echo "CCACHE_EXEC=$CCACHE_EXEC" >> $GITHUB_ENV
+        # Ensure ccache executable path is set for the build environment
+        echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
         echo "CCACHE_MAXSIZE=5G" >> $GITHUB_ENV
         echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
@@ -111,7 +108,9 @@ jobs:
         LLVM_OBJCOPY: llvm-objcopy
         LLVM_OBJDUMP: llvm-objdump
         LLVM_STRIP: llvm-strip
-        PATH: ${{ env.LLVM_TOOLCHAIN_PATH }}/bin:${{ env.PATH }} # Ensure LLVM is in PATH for compilation
+        # PATH is automatically handled by GITHUB_PATH added earlier.
+        # Ensure CCACHE_EXEC is correctly passed from env
+        CCACHE_EXEC: ${{ env.CCACHE_EXEC }}
       run: |
         echo "--> Compiling kernel..."
         make -j$(nproc) O=out
