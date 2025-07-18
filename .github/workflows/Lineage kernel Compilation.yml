@@ -1,22 +1,9 @@
-#
-# ██╗  ██╗██╗███╗    ██╗███████╗ █████╗  ██████╗███████╗    ██╗  ██╗██╗    ██╗██████╗ ███╗    ██╗██╗
-# ██║  ██║██║████╗  ██║██╔════╝██╔══██╗██╔════╝██╔════╝    ██║  ██║╚██╗ ██╔╝██╔══██╗████╗  ██║██║
-# ███████║██║██╔██╗ ██║█████╗  ███████║╚█████╗ ███████╗    ███████║ ╚████╔╝ ███████║██╔██╗ ██║██║
-# ██╔══██║██║██║╚██╗██║██╔══╝  ██╔══██║ ╚═══██╗╚════██║    ██╔══██║  ╚██╔╝  ██╔══██║██║╚██╗██║╚═╝
-# ██║  ██║██║██║ ╚████║███████╗██║  ██║██████╔╝███████║    ██║  ██║    ██║  ██║  ██║██║ ╚████║██╗
-# ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═╝  ╚═╝    ╚═╝  ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝
-#
-# This workflow is designed to build the LineageOS kernel for 'curtana'.
-# Created with ❤️ by Gemini for MINHAZ.
-#
-
 name: 🏗️ Lineage Kernel Compilation
 
-# ▶️ Controls when the workflow will run
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch:
 
 jobs:
   build:
@@ -24,81 +11,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 🐱 ASCII Cat Welcome
       - name: 🐾 Welcome Message
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
+          echo "Starting the LineageOS Kernel Build."
 
-              /\_/\
-            ( o.o )
-              > ^ <
-            /  |  \
-          /    |    \
-          /    |    \
-          /_____|_____\
-
-          Starting the LineageOS Kernel Build! Let's get this done! 🚀
-
-          EOF
-
-      # 셋업 Checking out the repository
       - name: ⬇️ Checking out repository
         uses: actions/checkout@v4
 
-      # ⚡️ Speeding up the process with ccache
       - name: 🗄️ Caching build dependencies
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ github.job }}
-          max-size: 5G # Setting cache size to 5GB
+          max-size: 5G
 
-      # 📦 Installing all the necessary dependencies
       - name: 🔧 Installing Build Dependencies
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
           export DEBIAN_FRONTEND=noninteractive # Set non-interactive frontend for apt
           sudo dpkg --add-architecture i386
-          echo "✅ Enabled i386 architecture."
           sudo apt-get update -y
-          echo "✅ Apt package lists updated."
           sudo apt-get install -y --no-install-recommends \
             build-essential git curl wget ccache libsepol-dev device-tree-compiler \
             ninja-build crossbuild-essential-arm64 crossbuild-essential-armhf \
             libncurses5-dev libssl-dev libelf-dev bc rsync \
-            libstdc++6:i386 libgcc1:i386 zlib1g:i386 libncursesw5:i386 # Removed lsb-core, changed libncurses5:i386 to libncursesw5:i386
-          echo "✅ All necessary dependencies are installed successfully! 🎉"
+            libstdc++6:i386 libgcc1:i386 zlib1g:i386 libncurses6:i386
+          echo "Dependencies installed."
 
-      # 📥 Downloading the LLVM Clang toolchain
       - name: 🛠️ Downloading LLVM Clang Toolchain
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-            +----------------------------------+
-            |  Downloading LLVM Clang Toolchain  |
-            +----------------------------------+
-
-          EOF
-          echo "⏳ Downloading LLVM Clang... this might take a moment."
+          echo "Downloading LLVM Clang..."
           # Note: This is an RC (Release Candidate) version. For production, consider a stable release.
           curl -LSs "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0-rc1/LLVM-21.1.0-rc1-Linux-X64.tar.xz" -o llvm.tar.xz
           mkdir llvm
           tar -xf llvm.tar.xz -C llvm --strip-components=1
           rm llvm.tar.xz
-          echo "✅ LLVM Clang downloaded and extracted successfully!"
+          echo "LLVM Clang downloaded and extracted."
 
-      # 🌍 Setting up the build environment
       - name: ⚙️ Setting Up Build Environment
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-            +----------------------------------+
-            |    Setting Environment Variables   |
-            +----------------------------------+
-
-          EOF
+          echo "Setting Environment Variables..."
           echo "export KBUILD_BUILD_USER=\"MINHAZ\"" >> $GITHUB_ENV
           echo "export KBUILD_BUILD_HOST=\"POTATO\"" >> $GITHUB_ENV
           echo "export LLVM_HOME=\"${{ github.workspace }}/llvm\"" >> $GITHUB_ENV
@@ -111,105 +65,59 @@ jobs:
           echo "export CXX=\"ccache clang++\"" >> $GITHUB_ENV
           echo "export LLVM=1" >> $GITHUB_ENV
           echo "export LLVM_IAS=1" >> $GITHUB_ENV
-          echo "✅ Environment variables are set and ready to go!"
+          echo "Environment variables set."
 
-      # 🌳 Cloning the kernel source code
       - name: 🌲 Cloning Kernel Source
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-              /\
-            /\*\
-            /\O\*\
-            /\/\/\/\
-
-            Cloning the kernel source...
-
-          EOF
+          echo "Cloning the kernel source..."
           git clone --depth=1 https://github.com/xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250 -b lineage-22.2 kernel
-          echo "✅ Kernel source cloned successfully!"
+          echo "Kernel source cloned."
 
-      # 🧹 Cleaning up the source tree
       - name: 🧼 Cleaning Kernel Source
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-            +----------------------------------+
-            |      Cleaning Source Tree        |
-            +----------------------------------+
-
-          EOF
+          echo "Cleaning Source Tree..."
           cd kernel
           make O=out mrproper
           make O=out clean
-          echo "✅ Kernel source tree is now clean as a whistle!"
+          echo "Kernel source tree cleaned."
 
-      # ⚙️ Configuring the kernel build
       - name: 📝 Configuring Kernel
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-            +----------------------------------+
-            |      Configuring the Kernel      |
-            +----------------------------------+
-
-          EOF
+          echo "Configuring the Kernel..."
           cd kernel
           make O=out vendor/xiaomi/miatoll_defconfig
-          echo "✅ Kernel configuration is set for miatoll!"
+          echo "Kernel configuration set for miatoll."
 
-      # 🚀 Compiling the kernel
       - name: 🔥 Compiling The Kernel
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-            +----------------------------------+
-            |        Starting Compilation      |
-            +----------------------------------+
-
-          EOF
+          echo "Starting Compilation..."
           cd kernel
-          echo "🚀 Let the compilation begin! This is the exciting part!"
           make O=out -j$(nproc --all)
-          echo "✅ Kernel compilation finished successfully! What a beast! 💪"
+          echo "Kernel compilation finished."
 
-      # 📦 Cloning AnyKernel3 for packaging
       - name: 🎁 Cloning AnyKernel3
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-            +----------------------------------+
-            |      Cloning AnyKernel3        |
-            +----------------------------------+
-
-          EOF
+          echo "Cloning AnyKernel3..."
           git clone --depth=1 https://github.com/ImONE-Na/AnyKernel3 -b master anykernel
-          echo "✅ AnyKernel3 repository cloned."
+          echo "AnyKernel3 repository cloned."
 
-      # 🎁 Packaging the flashable zip
       - name: 📦 Packaging Flashable Zip
         run: |
           set -e # Exit immediately if a command exits with a non-zero status.
-          cat << "EOF"
-
-            +----------------------------------+
-            |      Packaging the Final Zip     |
-            +----------------------------------+
-
-          EOF
+          echo "Packaging the Final Zip..."
           cd anykernel
           # Copy kernel artifacts
           # For miatoll, Image.gz-dtb is the common output for combined kernel+dtb
           cp ../kernel/out/arch/arm64/boot/Image.gz-dtb .
           # Copy dtb.img and dtbo.img if they are generated separately and needed by AnyKernel3
           # Note: If Image.gz-dtb already contains the DTB, dtb.img might be redundant.
-          cp ../kernel/out/arch/arm64/boot/dtb.img . || true # Use || true to prevent failure if not found
-          cp ../kernel/out/arch/arm64/boot/dtbo.img . || true # Use || true to prevent failure if not found
+          cp ../kernel/out/arch/arm64/boot/dtb.img . || true
+          cp ../kernel/out/arch/arm64/boot/dtbo.img . || true
           # Copy modules
           find ../kernel/out -name "*.ko" -exec cp {} modules/vendor/lib/modules/ \;
 
@@ -220,13 +128,12 @@ jobs:
           sed -i "s@kernel.string=.*@kernel.string=\"Lineage Kernel by MINHAZ\"@" anykernel.sh
           sed -i "s@kernel.compiler=.*@kernel.compiler=\"${COMPILER_VERSION}\"@" anykernel.sh
           sed -i "s@kernel.version=.*@kernel.version=4.14.336@" anykernel.sh
-          echo "✅ anykernel.sh updated."
+          echo "anykernel.sh updated."
 
           # Zip it up!
           zip -r9 Lineage-Kernel-curtana-$(date +%Y%m%d).zip * -x .git*
-          echo "✅ Flashable zip created successfully!"
+          echo "Flashable zip created successfully."
 
-      # 📤 Uploading the final artifact
       - name: 📤 Uploading Kernel Zip
         uses: actions/upload-artifact@v4
         with:
