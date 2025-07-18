@@ -1,10 +1,10 @@
 #
-# ██╗  ██╗██╗███╗   ██╗███████╗ █████╗  ██████╗███████╗   ██╗  ██╗██╗   ██╗██████╗ ███╗   ██╗██╗
-# ██║  ██║██║████╗  ██║██╔════╝██╔══██╗██╔════╝██╔════╝   ██║  ██║╚██╗ ██╔╝██╔══██╗████╗  ██║██║
-# ███████║██║██╔██╗ ██║█████╗  ███████║╚█████╗ ███████╗   ███████║ ╚████╔╝ ███████║██╔██╗ ██║██║
-# ██╔══██║██║██║╚██╗██║██╔══╝  ██╔══██║ ╚═══██╗╚════██║   ██╔══██║  ╚██╔╝  ██╔══██║██║╚██╗██║╚═╝
-# ██║  ██║██║██║ ╚████║███████╗██║  ██║██████╔╝███████║   ██║  ██║   ██║   ██║  ██║██║ ╚████║██╗
-# ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝   ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝
+# ██╗  ██╗██╗███╗    ██╗███████╗ █████╗  ██████╗███████╗    ██╗  ██╗██╗    ██╗██████╗ ███╗    ██╗██╗
+# ██║  ██║██║████╗  ██║██╔════╝██╔══██╗██╔════╝██╔════╝    ██║  ██║╚██╗ ██╔╝██╔══██╗████╗  ██║██║
+# ███████║██║██╔██╗ ██║█████╗  ███████║╚█████╗ ███████╗    ███████║ ╚████╔╝ ███████║██╔██╗ ██║██║
+# ██╔══██║██║██║╚██╗██║██╔══╝  ██╔══██║ ╚═══██╗╚════██║    ██╔══██║  ╚██╔╝  ██╔══██║██║╚██╗██║╚═╝
+# ██║  ██║██║██║ ╚████║███████╗██║  ██║██████╔╝███████║    ██║  ██║    ██║  ██║  ██║██║ ╚████║██╗
+# ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝╚═════╝ ╚══════╝    ╚═╝  ╚═╝    ╚═╝  ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝
 #
 # This workflow is designed to build the LineageOS kernel for 'curtana'.
 # Created with ❤️ by Gemini for MINHAZ.
@@ -27,18 +27,19 @@ jobs:
       # 🐱 ASCII Cat Welcome
       - name: 🐾 Welcome Message
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
-             /\_/\
+
+              /\_/\
             ( o.o )
-             > ^ <
-           /  |  \
-          /   |   \
-         /    |    \
-        /_____|_____\
-          
+              > ^ <
+            /  |  \
+          /    |    \
+          /    |    \
+          /_____|_____\
+
           Starting the LineageOS Kernel Build! Let's get this done! 🚀
-          
+
           EOF
 
       # 셋업 Checking out the repository
@@ -55,7 +56,8 @@ jobs:
       # 📦 Installing all the necessary dependencies
       - name: 🔧 Installing Build Dependencies
         run: |
-          echo "echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections" | sudo tee /etc/sudoers.d/debconf-fix
+          set -e # Exit immediately if a command exits with a non-zero status.
+          export DEBIAN_FRONTEND=noninteractive # Set non-interactive frontend for apt
           sudo dpkg --add-architecture i386
           echo "✅ Enabled i386 architecture."
           sudo apt-get update -y
@@ -70,14 +72,16 @@ jobs:
       # 📥 Downloading the LLVM Clang toolchain
       - name: 🛠️ Downloading LLVM Clang Toolchain
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
+
             +----------------------------------+
             |  Downloading LLVM Clang Toolchain  |
             +----------------------------------+
-          
+
           EOF
           echo "⏳ Downloading LLVM Clang... this might take a moment."
+          # Note: This is an RC (Release Candidate) version. For production, consider a stable release.
           curl -LSs "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0-rc1/LLVM-21.1.0-rc1-Linux-X64.tar.xz" -o llvm.tar.xz
           mkdir llvm
           tar -xf llvm.tar.xz -C llvm --strip-components=1
@@ -87,12 +91,13 @@ jobs:
       # 🌍 Setting up the build environment
       - name: ⚙️ Setting Up Build Environment
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
+
             +----------------------------------+
-            |   Setting Environment Variables  |
+            |    Setting Environment Variables   |
             +----------------------------------+
-          
+
           EOF
           echo "export KBUILD_BUILD_USER=\"MINHAZ\"" >> $GITHUB_ENV
           echo "export KBUILD_BUILD_HOST=\"POTATO\"" >> $GITHUB_ENV
@@ -111,15 +116,16 @@ jobs:
       # 🌳 Cloning the kernel source code
       - name: 🌲 Cloning Kernel Source
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
-             /\\
-            /\\*\\
-           /\\O\\*\\
-          /\\/\\/\\/\\
-          
+
+              /\
+            /\*\
+            /\O\*\
+            /\/\/\/\
+
             Cloning the kernel source...
-          
+
           EOF
           git clone --depth=1 https://github.com/xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250 -b lineage-22.2 kernel
           echo "✅ Kernel source cloned successfully!"
@@ -127,12 +133,13 @@ jobs:
       # 🧹 Cleaning up the source tree
       - name: 🧼 Cleaning Kernel Source
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
+
             +----------------------------------+
             |      Cleaning Source Tree        |
             +----------------------------------+
-          
+
           EOF
           cd kernel
           make O=out mrproper
@@ -142,12 +149,13 @@ jobs:
       # ⚙️ Configuring the kernel build
       - name: 📝 Configuring Kernel
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
+
             +----------------------------------+
-            |     Configuring the Kernel       |
+            |      Configuring the Kernel      |
             +----------------------------------+
-          
+
           EOF
           cd kernel
           make O=out vendor/xiaomi/miatoll_defconfig
@@ -156,12 +164,13 @@ jobs:
       # 🚀 Compiling the kernel
       - name: 🔥 Compiling The Kernel
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
+
             +----------------------------------+
-            |       Starting Compilation       |
+            |        Starting Compilation      |
             +----------------------------------+
-          
+
           EOF
           cd kernel
           echo "🚀 Let the compilation begin! This is the exciting part!"
@@ -171,12 +180,13 @@ jobs:
       # 📦 Cloning AnyKernel3 for packaging
       - name: 🎁 Cloning AnyKernel3
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
+
             +----------------------------------+
-            |      Cloning AnyKernel3          |
+            |      Cloning AnyKernel3        |
             +----------------------------------+
-          
+
           EOF
           git clone --depth=1 https://github.com/ImONE-Na/AnyKernel3 -b master anykernel
           echo "✅ AnyKernel3 repository cloned."
@@ -184,30 +194,34 @@ jobs:
       # 🎁 Packaging the flashable zip
       - name: 📦 Packaging Flashable Zip
         run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
           cat << "EOF"
-          
+
             +----------------------------------+
-            |     Packaging the Final Zip      |
+            |      Packaging the Final Zip     |
             +----------------------------------+
-          
+
           EOF
           cd anykernel
           # Copy kernel artifacts
-          cp ../kernel/out/arch/arm64/boot/Image.gz .
-          cp ../kernel/out/arch/arm64/boot/dtb.img .
-          cp ../kernel/out/arch/arm64/boot/dtbo.img .
+          # For miatoll, Image.gz-dtb is the common output for combined kernel+dtb
+          cp ../kernel/out/arch/arm64/boot/Image.gz-dtb .
+          # Copy dtb.img and dtbo.img if they are generated separately and needed by AnyKernel3
+          # Note: If Image.gz-dtb already contains the DTB, dtb.img might be redundant.
+          cp ../kernel/out/arch/arm64/boot/dtb.img . || true # Use || true to prevent failure if not found
+          cp ../kernel/out/arch/arm64/boot/dtbo.img . || true # Use || true to prevent failure if not found
           # Copy modules
           find ../kernel/out -name "*.ko" -exec cp {} modules/vendor/lib/modules/ \;
-          
+
           # Get compiler version
           COMPILER_VERSION=$(clang --version | head -n 1)
-          
+
           # Update anykernel.sh
           sed -i "s@kernel.string=.*@kernel.string=\"Lineage Kernel by MINHAZ\"@" anykernel.sh
           sed -i "s@kernel.compiler=.*@kernel.compiler=\"${COMPILER_VERSION}\"@" anykernel.sh
           sed -i "s@kernel.version=.*@kernel.version=4.14.336@" anykernel.sh
           echo "✅ anykernel.sh updated."
-          
+
           # Zip it up!
           zip -r9 Lineage-Kernel-curtana-$(date +%Y%m%d).zip * -x .git*
           echo "✅ Flashable zip created successfully!"
