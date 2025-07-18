@@ -31,7 +31,7 @@ jobs:
             ██████╔╝██║██╔██╗ ██║  ██║  ███████║██║      ██║    ██║██║    ██║█████╗
             ██╔══██╗██║██║╚██╗██║  ██║  ██╔══██║██║      ╚██╗ ██╔╝██║    ██║██╔══╝
             ██║  ██║██║██║ ╚████║  ██║  ██║  ██║███████╗ ╚████╔╝ ╚██████╔╝███████╗
-            ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═════╝ ╚══════╝
+            ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝  ╚═╝╚══════╝  ╚══╝  ╚═════╝ ╚══════╝
           EOF
           sudo dpkg --add-architecture i386 # Add i386 architecture
           sudo apt-get update
@@ -83,8 +83,10 @@ jobs:
             /_/    \\_\ \_\\ \_\\ \_\\ | |\  |\_\ \_\\_\\ 
           /_/    \\____/ \___/ \____/ |_| \_| \____//_/    \\_\
           EOF
-          # Changed -b master to -b main based on your provided URL
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/clang-r547379 -b main $GITHUB_WORKSPACE/clang
+          # Clone the parent repository and then move the specific clang version
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b main $GITHUB_WORKSPACE/clang_temp
+          mkdir -p $GITHUB_WORKSPACE/clang
+          mv $GITHUB_WORKSPACE/clang_temp/clang-r547379 $GITHUB_WORKSPACE/clang/bin
 
       - name: '📥 Cloning AnyKernel3'
         run: |
@@ -182,7 +184,7 @@ jobs:
            | |_) | __ _ ___| | _____ _ __ ___ | |__   _| | ___ 
            |  _ < / _\` |/ __| |/ / _ \ '__/ __| |  __| | | |/ _ \
            | |_) | (_| | (__|   <  __/ |  \__ \ | |    | | |  __/
-           |____/ \__,_|\___|_|\_\___|_|  |___/ |_|    |_|_|\___|
+           |____/ \__,_|\___|_|\_\___|_|  |___/ |_|    |_|_|\___|"
           EOF
           # Copy kernel images and modules
           cp $GITHUB_WORKSPACE/kernel/out/arch/arm64/boot/Image.gz $GITHUB_WORKSPACE/AnyKernel3/
