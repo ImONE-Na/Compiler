@@ -33,7 +33,7 @@ jobs:
             device-tree-compiler \
             ninja-build \
             libssl-dev \
-            libsepol1 \
+            libsepol-dev \
             flex \
             bison \
             git \
@@ -86,7 +86,7 @@ jobs:
           export ARCH=arm64
           export SUBARCH=arm64
           # Set CROSS_COMPILE and CROSS_COMPILE_ARM32
-          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE=aarch664-linux-gnu-
           export CROSS_COMPILE_ARM32=arm-linux-gnueabihf-
           # Verify clang version
           clang --version
@@ -173,7 +173,7 @@ jobs:
       - name: 📦 Sync AnyKernel3
         run: |
           echo " "
-          echo "╔═════════════════════════════════════════╗"
+          echo "╔═════════════════════════════════════════"
           echo "║          Syncing AnyKernel3             ║"
           echo "╚═════════════════════════════════════════╝"
           echo " "
