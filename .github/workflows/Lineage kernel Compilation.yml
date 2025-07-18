@@ -66,7 +66,7 @@ jobs:
             build-essential git curl wget ccache libsepol-dev device-tree-compiler \
             ninja-build crossbuild-essential-arm64 crossbuild-essential-armhf \
             libncurses5-dev libssl-dev libelf-dev bc rsync \
-            lsb-core libstdc++6:i386 libgcc1:i386 zlib1g:i386 libncurses5:i386
+            libstdc++6:i386 libgcc1:i386 zlib1g:i386 libncursesw5:i386 # Removed lsb-core, changed libncurses5:i386 to libncursesw5:i386
           echo "✅ All necessary dependencies are installed successfully! 🎉"
 
       # 📥 Downloading the LLVM Clang toolchain
