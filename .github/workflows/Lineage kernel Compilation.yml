@@ -37,7 +37,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc build-essential ccache curl device-tree-compiler \
                                    flex g++-multilib gcc-multilib git gnupg gperf imagemagick \
-                                   lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev \
+                                   libncurses5-dev:i386 libreadline-dev:i386 zlib1g-dev:i386 libelf-dev \
                                    liblz4-tool libncurses5-dev libsdl1.2-dev libsepol-dev libssl-dev \
                                    libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools \
                                    xsltproc zip zlib1g-dev ninja-build gcc-aarch64-linux-gnu \
@@ -145,7 +145,7 @@ jobs:
           echo "  / ____|                    | (_)       "
           echo " | |   ___ _ __ ___ _ __  _   _| |_ ___ _ __ "
           echo " | |  / _ \| '_ \` _ \| '_ \| | | | | / __| '__|"
-          echo " | |___| (_) | | | | | |_) | |_| | | \__ \ |   "
+          echo " | |___| (_) | | | | | | |_) | |_| | | \__ \ |   "
           echo "  \_____\___/|_| |_| |_| .__/ \__,_|_|_|___/_|   "
           echo "                       | |                     "
           echo "                       |_|                     "
