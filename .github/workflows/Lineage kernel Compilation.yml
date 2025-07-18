@@ -1,29 +1,35 @@
 name: Build Curtana Lineage Kernel
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch: # Allows manual triggering of the workflow from the GitHub Actions UI
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Specify the runner environment
+    runs-on: ubuntu-latest # Specifies the runner environment for the job
 
     steps:
     # Step 1: Checkout the kernel source repository
+    # This step uses 'run' to execute git clone command
     - name: Checkout Kernel Source
+      shell: bash
       run: |
         echo "--> Checking out kernel source..."
         git clone --depth=1 https://github.com/xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250.git -b lineage-22.2 kernel
         echo "Kernel source checkout complete."
 
     # Step 2: Checkout the AnyKernel3 repository
+    # This step uses 'run' to execute git clone command
     - name: Checkout AnyKernel3
+      shell: bash
       run: |
         echo "--> Checking out AnyKernel3..."
         git clone --depth=1 https://github.com/ImONE-Na/AnyKernel3.git -b master AnyKernel3
         echo "AnyKernel3 checkout complete."
 
-    # Step 3: Set up the build environment by installing dependencies and LLVM
+    # Step 3: Set up the build environment
+    # This step uses 'run' to install dependencies, download/extract LLVM, and set environment variables
     - name: Set up Build Environment
+      shell: bash
       run: |
         echo "--> Setting up build environment..."
         echo "Installing essential build dependencies..."
@@ -39,13 +45,13 @@ jobs:
         mkdir llvm-toolchain
         tar -xf llvm.tar.xz -C llvm-toolchain --strip-components=1
         
-        echo "Setting LLVM environment variables..."
+        echo "Setting LLVM environment variables and adding to PATH..."
         # Set LLVM_TOOLCHAIN_PATH as an environment variable for subsequent steps
         echo "LLVM_TOOLCHAIN_PATH=$GITHUB_WORKSPACE/llvm-toolchain" >> $GITHUB_ENV
         # Add LLVM bin directory to PATH for all subsequent steps in this job
         echo "$GITHUB_WORKSPACE/llvm-toolchain/bin" >> $GITHUB_PATH 
         
-        echo "Clang version:"
+        echo "Verifying Clang version:"
         clang --version
         echo "LLVM setup complete."
         
@@ -57,33 +63,36 @@ jobs:
         which aarch64-linux-gnu-gcc && echo "aarch64-linux-gnu-gcc is installed." || { echo "Error: aarch64-linux-gnu-gcc not found!"; exit 1; }
         which clang && echo "clang is installed." || { echo "Error: clang not found!"; exit 1; }
         which ccache && echo "ccache is installed." || { echo "Error: ccache not found!"; exit 1; }
-        echo "Environment setup complete."
+        echo "Environment setup verification complete."
 
-    # Step 4: Initialize ccache using the dedicated GitHub Action
-    # This step ONLY uses 'uses:'
+    # Step 4: Initialize ccache caching
+    # This step ONLY uses 'uses:' to call the ccache-action. It DOES NOT have a 'run' key.
     - name: Initialize ccache (Action)
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ github.job }}
         max-size: 5G
 
-    # Step 5: Configure ccache specific environment variables
-    # This step ONLY uses 'run:'
+    # Step 5: Configure ccache environment variables
+    # This step ONLY uses 'run' to set the ccache specific environment variables. It DOES NOT have a 'uses' key.
     - name: Configure ccache Environment Variables
+      shell: bash
       run: |
         echo "--> Configuring ccache environment variables..."
-        # CCACHE_EXEC should point to the ccache binary, usually found in PATH
+        # CCACHE_EXEC should point to the ccache binary, which is already in PATH
         echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
         echo "CCACHE_MAXSIZE=5G" >> $GITHUB_ENV
         echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
         echo "CCACHE_NLEVELS=2" >> $GITHUB_ENV
         echo "CCACHE_SLOPPINESS=time_macros,file_macro,system_headers" >> $GITHUB_ENV
-        ccache -s # Show ccache stats
+        ccache -s # Display ccache statistics
         echo "ccache environment variables set."
         
     # Step 6: Configure the kernel with the defconfig
+    # This step uses 'run' for the make command
     - name: Configure Kernel
+      shell: bash
       working-directory: kernel
       run: |
         echo "--> Configuring kernel..."
@@ -91,7 +100,9 @@ jobs:
         echo "Kernel configuration complete."
 
     # Step 7: Compile the kernel
+    # This step uses 'run' for the make command and sets specific environment variables for compilation
     - name: Compile Kernel
+      shell: bash
       working-directory: kernel
       env:
         ARCH: arm64
@@ -107,7 +118,7 @@ jobs:
         LLVM_OBJCOPY: llvm-objcopy
         LLVM_OBJDUMP: llvm-objdump
         LLVM_STRIP: llvm-strip
-        # CCACHE_EXEC is already set in GITHUB_ENV from previous step
+        # CCACHE_EXEC is correctly sourced from GITHUB_ENV which was set in a previous step
       run: |
         echo "--> Compiling kernel..."
         make -j$(nproc) O=out
@@ -117,7 +128,9 @@ jobs:
         ls -la out/modules/
 
     # Step 8: Package the compiled kernel artifacts with AnyKernel3
+    # This step uses 'run' for file copying and zip creation
     - name: Package Kernel with AnyKernel3
+      shell: bash
       run: |
         echo "--> Packaging kernel with AnyKernel3..."
         echo "Copying Image.gz to AnyKernel3 root..."
@@ -135,17 +148,16 @@ jobs:
         
         echo "Generating flashable zip..."
         cd AnyKernel3
+        # Use full path to avoid issues if workspace changes
         zip -r9 ${{ github.workspace }}/Curtana-LineageOS-Kernel-${{ github.run_number }}.zip * -x .git README.md
         cd ..
         echo "Flashable zip created."
 
     # Step 9: Upload the flashable zip as a GitHub artifact
+    # This step ONLY uses 'uses:' for the upload-artifact action. It DOES NOT have a 'run' key.
     - name: Upload Kernel as Artifact
       uses: actions/upload-artifact@v4
       with:
         name: Curtana-LineageOS-Kernel
         path: Curtana-LineageOS-Kernel-*.zip
         retention-days: 7
-      run: |
-        echo "--> Uploading kernel artifact..."
-        echo "Kernel artifact uploaded successfully."
