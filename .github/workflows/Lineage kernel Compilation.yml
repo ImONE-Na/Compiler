@@ -1,13 +1,3 @@
-# ========================================================================================
-#
-#                      LineageOS Kernel Compilation Workflow 🚀
-#
-#   This workflow automates the process of compiling the LineageOS kernel for 'curtana'.
-#   It includes cloning the source, setting up the build environment, compiling the
-#   kernel, and packaging it into a flashable zip using AnyKernel3.
-#
-# ========================================================================================
-
 name: 'Lineage kernel Compilation 🐧'
 
 #
@@ -36,21 +26,22 @@ jobs:
       - name: '🔧 Installing Dependencies'
         run: |
           echo " "
-          echo "  ██████╗ ██╗███╗   ██╗████████╗ █████╗ ██╗     ██╗   ██╗██╗   ██╗███████╗"
-          echo "  ██╔══██╗██║████╗  ██║╚══██╔══╝██╔══██╗██║     ██║   ██║██║   ██║██╔════╝"
-          echo "  ██████╔╝██║██╔██╗ ██║   ██║   ███████║██║     ██║   ██║██║   ██║█████╗"
-          echo "  ██╔══██╗██║██║╚██╗██║   ██║   ██╔══██║██║     ╚██╗ ██╔╝██║   ██║██╔══╝"
-          echo "  ██║  ██║██║██║ ╚████║   ██║   ██║  ██║███████╗ ╚████╔╝ ╚██████╔╝███████╗"
-          echo "  ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚══════╝  ╚═══╝   ╚═════╝ ╚══════╝"
+          echo "  ██████╗ ██╗███╗    ██╗████████╗ █████╗ ██╗      ██╗    ██╗██╗    ██╗███████╗"
+          echo "  ██╔══██╗██║████╗  ██║╚══██╔══╝██╔══██╗██║      ██║    ██║██║    ██║██╔════╝"
+          echo "  ██████╔╝██║██╔██╗ ██║  ██║  ███████║██║      ██║    ██║██║    ██║█████╗"
+          echo "  ██╔══██╗██║██║╚██╗██║  ██║  ██╔══██║██║      ╚██╗ ██╔╝██║    ██║██╔══╝"
+          echo "  ██║  ██║██║██║ ╚████║  ██║  ██║  ██║███████╗ ╚████╔╝ ╚██████╔╝███████╗"
+          echo "  ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═════╝ ╚══════╝"
           echo " "
+          sudo dpkg --add-architecture i386 # Add i386 architecture
           sudo apt-get update
           sudo apt-get install -y bc build-essential ccache curl device-tree-compiler \
-                                  flex g++-multilib gcc-multilib git gnupg gperf imagemagick \
-                                  lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev \
-                                  liblz4-tool libncurses5-dev libsdl1.2-dev libsepol-dev libssl-dev \
-                                  libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools \
-                                  xsltproc zip zlib1g-dev ninja-build gcc-aarch64-linux-gnu \
-                                  gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi
+                                   flex g++-multilib gcc-multilib git gnupg gperf imagemagick \
+                                   lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev \
+                                   liblz4-tool libncurses5-dev libsdl1.2-dev libsepol-dev libssl-dev \
+                                   libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools \
+                                   xsltproc zip zlib1g-dev ninja-build gcc-aarch64-linux-gnu \
+                                   gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi
 
       # ----------------------------------------------------------------------------------------
       # ⚡ 2. Ccache for Faster Builds
@@ -67,9 +58,9 @@ jobs:
       - name: '📥 Cloning Kernel Source'
         run: |
           echo " "
-          echo "  _  __ _   _    _              _        "
-          echo " | |/ /(_) | |  | |            | |       "
-          echo " | ' /  _  | |  | |  ___   ___ | | _____ "
+          echo "  _  __ _   _    _          _     "
+          echo " | |/ /(_) | |  | |   ___   ___ | | _____ "
+          echo " | ' /  _  | |  | | / _ \ / __|| |/ / __|"
           echo " |  <  | | | |/\| | / _ \ / __|| |/ / __|"
           echo " | . \ | | \  /\  /|  __/| (__ |   <\__ \"
           echo " |_|\_\|_|  \/  \/  \___| \___||_|\_\___/"
@@ -79,19 +70,19 @@ jobs:
       - name: '📥 Cloning AOSP Clang Compiler'
         run: |
           echo " "
-          echo "     /\    ____   ___   ____    _   _   ____    _    "
-          echo "    /  \  / __ \ / _ \ / __ \  | \ | | / __ \  / \   "
-          echo "   / /\ \ | | | || | | || | | | |  \| || |  | |/ _ \  "
-          echo "  / ____ \| | | || | | || | | | | .   || |  | |/ ___ \ "
-          echo " /_/    \\_\ \_\\ \_\\ \_\\ | |\  |\_\ \_\\_\\ "
-          echo "/_/    \\____/ \___/ \____/ |_| \_| \____//_/   \\_\\"
+          echo "      /\    ____   ___   ____    _   _   ____    _   "
+          echo "     /  \  / __ \ / _ \ / __ \  | \ | | / __ \  / \   "
+          echo "    / /\ \ | | | || | | || | | | |  \| || |  | |/ _ \  "
+          echo "   / ____ \| | | || | | || | | | | .  || |  | |/ ___ \ "
+          echo "  /_/    \\_\ \_\\ \_\\ \_\\ | |\  |\_\ \_\\_\\ "
+          echo "/_/    \\____/ \___/ \____/ |_| \_| \____//_/    \\_\\"
           echo " "
           git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/clang-r547379 $GITHUB_WORKSPACE/clang
 
       - name: '📥 Cloning AnyKernel3'
         run: |
           echo " "
-          echo "      _    _  _   _  _  _  ____  ____  _  _ "
+          echo "      _   _ _   _ _ _ ____ ____ _ _ "
           echo "     / \  / \/ \ / \/ \/ \/  __\/  _ \/ \/ \\"
           echo "     | |  | || || || || |||  \/|| / \|| || |"
           echo "     | |_/\| || || || || |||    || \_/|| || |"
@@ -105,9 +96,9 @@ jobs:
       - name: '⚙️ Setting Up Environment Variables'
         run: |
           echo " "
-          echo "  ______   __  __     __  __     ______     ______   ______     ______     __    __ "
-          echo " /\  ___\ /\ \_\ \   /\ \/\ \   /\  __ \   /\__  _\ /\  __ \   /\  == \   /\ '-./  \"
-          echo " \ \  __\ \ \  __ \  \ \ \_\ \  \ \ \/\ \  \/_/\ \/ \ \ \/\ \  \ \  __<   \ \ \-./\ \ "
+          echo "  ______    __  __    __  __    ______    ______    ______      ______    __    __ "
+          echo " /\ ___\ /\ \_\ \   /\ \/\ \   /\ __ \   /\__ _\ /\ __ \   /\ == \   /\ '-./  \""
+          echo " \ \ __\ \ \  __ \  \ \ \_\ \  \ \ \/\ \  \/_/\ \/ \ \ \/\ \  \ \ __<   \ \ \-./\ \ "
           echo "  \ \_____\\ \_\ \_\  \ \_____\  \ \_____\    \ \_\  \ \_____\  \ \_\ \_\  \ \_\ \ \_\"
           echo "   \/_____/ \/_/\/_/   \/_____/   \/_____/     \/_/   \/_____/   \/_/ /_/   \/_/  \/_/"
           echo " "
@@ -131,14 +122,14 @@ jobs:
       - name: '🧹 Cleaning Kernel Source'
         run: |
           echo " "
-          echo "   _____ _      _____           _      "
-          echo "  / ____| |    / ____|         (_)     "
-          echo " | |    | |   | (___   ___ _ __ _ _ __  "
-          echo " | |    | |    \___ \ / __| '__| | '_ \ "
+          echo "    _____ _     _____          _     "
+          echo "  / ____| |   / ____|        (_)     "
+          echo " | |    | |  | (___   ___ _ __ _ _ __  "
+          echo " | |    | |   \___ \ / __| '__| | '_ \ "
           echo " | |____| |________) | (__| |  | | |_) |"
           echo "  \_____|______|_____/ \___|_|  |_| .__/ "
-          echo "                                 | |    "
-          echo "                                 |_|    "
+          echo "                                 | |   "
+          echo "                                 |_|   "
           echo " "
           cd $GITHUB_WORKSPACE/kernel
           make mrproper
@@ -150,14 +141,14 @@ jobs:
       - name: '🛠️ Compiling The Kernel'
         run: |
           echo " "
-          echo "   _____                            _ _         "
-          echo "  / ____|                          | (_)        "
-          echo " | |     ___  _ __ ___  _ __  _   _| |_ ___ _ __ "
-          echo " | |    / _ \| '_ \` _ \| '_ \| | | | | / __| '__|"
-          echo " | |___| (_) | | | | | | |_) | |_| | | \__ \ |   "
+          echo "    _____                      _ _       "
+          echo "  / ____|                    | (_)       "
+          echo " | |   ___ _ __ ___ _ __  _   _| |_ ___ _ __ "
+          echo " | |  / _ \| '_ \` _ \| '_ \| | | | | / __| '__|"
+          echo " | |___| (_) | | | | | |_) | |_| | | \__ \ |   "
           echo "  \_____\___/|_| |_| |_| .__/ \__,_|_|_|___/_|   "
-          echo "                       | |                      "
-          echo "                       |_|                      "
+          echo "                       | |                     "
+          echo "                       |_|                     "
           echo " "
           cd $GITHUB_WORKSPACE/kernel
           # Configure the kernel
@@ -165,13 +156,13 @@ jobs:
 
           # Start the compilation
           make -j$(nproc --all) O=out \
-               CC="ccache clang" \
-               CXX="ccache clang++" \
-               CLANG_TRIPLE="aarch64-linux-gnu-" \
-               CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
-               CROSS_COMPILE_ARM32=${{ env.CROSS_COMPILE_ARM32 }} \
-               ARCH=${{ env.ARCH }} \
-               SUBARCH=${{ env.SUBARCH }}
+                CC="ccache clang" \
+                CXX="ccache clang++" \
+                CLANG_TRIPLE="aarch64-linux-gnu-" \
+                CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
+                CROSS_COMPILE_ARM32=${{ env.CROSS_COMPILE_ARM32 }} \
+                ARCH=${{ env.ARCH }} \
+                SUBARCH=${{ env.SUBARCH }}
 
       # ----------------------------------------------------------------------------------------
       # 📦 7. Packaging into a Flashable Zip
@@ -179,9 +170,9 @@ jobs:
       - name: '📦 Packaging Flashable Zip'
         run: |
           echo " "
-          echo "  ____             _                  ______ _ _      "
-          echo " |  _ \           | |                |  ____(_) |     "
-          echo " | |_) | __ _  ___| | _____ _ __ ___  | |__   _| | ___ "
+          echo "  ____           _              ______ _ _     "
+          echo " |  _ \         | |            | ____(_) |     "
+          echo " | |_) | __ _ ___| | _____ _ __ ___ | |__   _| | ___ "
           echo " |  _ < / _\` |/ __| |/ / _ \ '__/ __| |  __| | | |/ _ \\"
           echo " | |_) | (_| | (__|   <  __/ |  \__ \ | |    | | |  __/"
           echo " |____/ \__,_|\___|_|\_\___|_|  |___/ |_|    |_|_|\___|"
