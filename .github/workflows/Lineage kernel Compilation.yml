@@ -1,239 +1,238 @@
-name: Lineage kernel Compilation
+name: 🏗️ Lineage Kernel Compilation 🎉
 
 on:
   push:
     branches:
-      - main # This workflow will trigger on pushes to the 'main' branch
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  build-kernel:
-    name: 🏗️Kernel Building ... # Job name with an emoji
-    runs-on: ubuntu-latest # Specifies the operating system for the job
-
-    # Define environment variables that will be used throughout the workflow
-    env:
-      KBUILD_BUILD_USER: MINHAZ # User name for the kernel build
-      KBUILD_BUILD_HOST: POTATO # Host name for the kernel build
-      ARCH: arm64 # Architecture for kernel compilation
-      SUBARCH: arm64 # Sub-architecture for kernel compilation
-      LLVM_TOOLCHAIN_VERSION: 21.1.0-rc1 # Version of the LLVM toolchain to download
-      LLVM_TOOLCHAIN_URL: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_TOOLCHAIN_VERSION }}/LLVM-${{ env.LLVM_TOOLCHAIN_VERSION}}-Linux-X64.tar.xz # URL for LLVM toolchain
-      KERNEL_SOURCE_DIR: android_kernel_xiaomi_sm6250 # Directory name for the kernel source
-      ANYKERNEL_DIR: AnyKernel3 # Directory name for the AnyKernel3 repository
+  build:
+    runs-on: ubuntu-latest
+    name: 🏗️ Kernel Building ...
 
     steps:
-      # ASCII art cat to start the workflow with some flair!
-      - name: 😼
+      # Step 1: Display ASCII Art for Workflow Start
+      - name: 🎨 Display Workflow Start Art
         run: |
-          echo " " # Blank echo for spacing
-          echo "  /\_/\  "
-          echo " ( o.o ) "
-          echo "  > ^ <  "
-          echo " " # Blank echo for spacing
-          echo "Meow! Starting the LineageOS Kernel Compilation Workflow!"
-          echo " " # Blank echo for spacing
+          echo "🚀 Starting Lineage Kernel Compilation! 🚀"
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Meow! Let's compile that kernel! 😺
+          EOF
 
-      - name: 🐾 Checking out Kernel Source... # Step to clone the kernel source
-        uses: actions/checkout@v4 # Action to check out the repository
-        with:
-          repository: xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250 # Kernel source repository
-          ref: lineage-22.2 # Branch of the kernel source
-          path: ${{ env.KERNEL_SOURCE_DIR }} # Path where the kernel source will be cloned
-        env:
-          # This is sometimes needed for older runners or specific actions, though v4 is generally secure.
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true' 
-
-      - name: ⚡ Setting up ccache... # Step to configure ccache for faster compilation
-        uses: hendrikmuhs/ccache-action@v1.2 # Action for ccache setup
-        with:
-          key: ${{ github.job }}-${{ github.ref }} # Unique key for cache
-          max-size: 5G # Maximum cache size
-        env:
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
-
-      - name: ⚙️ Downloading and Extracting LLVM Clang... # Step to get and set up the compiler
+      # Step 2: Install Dependencies
+      - name: 🛠️ Install Dependencies
         run: |
-          echo " " # Blank echo for spacing
-          echo "⚙️ Downloading and extracting LLVM Clang toolchain..."
-          # Download the LLVM toolchain archive
-          wget "${{ env.LLVM_TOOLCHAIN_URL }}" -O llvm.tar.xz
-          # Extract the archive
-          tar -xf llvm.tar.xz
-          
-          # Set the path to the extracted LLVM directory
-          LLVM_PATH=$(pwd)/LLVM-${{ env.LLVM_TOOLCHAIN_VERSION}}-Linux-X64
-          # Export environment variables for subsequent steps
-          echo "LLVM_PATH=$LLVM_PATH" >> $GITHUB_ENV
-          echo "CROSS_COMPILE=$LLVM_PATH/bin/aarch64-linux-gnu-" >> $GITHUB_ENV # Cross-compile prefix for ARM64
-          echo "CROSS_COMPILE_ARM32=$LLVM_PATH/bin/arm-linux-gnueabihf-" >> $GITHUB_ENV # Cross-compile prefix for ARM32
-          echo "PATH=$LLVM_PATH/bin:$PATH" >> $GITHUB_ENV # Add LLVM bin to PATH
-          
-          echo "LLVM Clang setup complete. Verifying paths:"
-          echo "LLVM_PATH: $LLVM_PATH"
-          echo "CROSS_COMPILE: ${{ env.CROSS_COMPILE }}"
-          echo "CROSS_COMPILE_ARM32: ${{ env.CROSS_COMPILE_ARM32 }}"
-          echo "PATH: $PATH"
-          clang --version # Verify clang installation
-          echo " " # Blank echo for spacing
-
-      - name: 🛠️ Installing Build Dependencies... # Step to install all necessary packages
-        run: |
-          echo " " # Blank echo for spacing
-          echo "🛠️ Installing necessary build dependencies..."
-          sudo apt update # Update apt package list
-          # Install core build tools
-          sudo apt install -y build-essential device-tree-compiler ninja-build libsepol-dev
-          
-          # Add 32-bit architecture support for specific dependencies
-          echo "Adding 32-bit architecture and updating apt for 32-bit dependencies..."
+          echo "📦 Installing build dependencies..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Installing dependencies... 🛠️
+          EOF
+          # Enable 32-bit architecture support for arm32 dependencies
           sudo dpkg --add-architecture i386
-          sudo apt update
-          # Install common 32-bit libraries
-          sudo apt install -y libc6:i386 libncurses5:i386 libstdc++6:i386
-          
-          # Install GNU cross-compilers; often pull in libraries LLVM might implicitly depend on
-          echo "Installing GNU cross-compilers for potential library dependencies..."
-          sudo apt install -y gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
-          echo "Dependencies installed successfully."
-          echo " " # Blank echo for spacing
+          sudo apt-get update
+          sudo apt-get install -y build-essential device-tree-compiler ninja-build \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf libsepol-dev \
+            lib32z1-dev lib32ncurses-dev lib32gcc-11-dev \
+            bc bison flex libssl-dev python3 zip curl
+          echo "✅ Dependencies installed successfully!"
 
-      - name: 🧹 Cleaning Kernel Source... # Step to clean the kernel build directory
-        working-directory: ${{ env.KERNEL_SOURCE_DIR }} # Execute commands in the kernel source directory
+      # Step 3: Setup ccache
+      - name: ⚡ Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          max-size: 5G
         run: |
-          echo " " # Blank echo for spacing
-          echo "🧹 Performing mrproper and clean on kernel source..."
-          make O=out mrproper # Deep clean the kernel source tree
-          make O=out clean # Clean the build output directory
-          echo "Kernel source cleaned."
-          echo " " # Blank echo for spacing
+          echo "⚡ Setting up ccache for faster compilation..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Caching like a pro! ⚡
+          EOF
 
-      - name: 📝 Configuring Kernel... # Step to set up the kernel configuration
-        working-directory: ${{ env.KERNEL_SOURCE_DIR }}
+      # Step 4: Download LLVM Clang
+      - name: 📥 Download LLVM Clang
         run: |
-          echo " " # Blank echo for spacing
-          echo "📝 Configuring kernel with miatoll_defconfig..."
-          make O=out vendor/xiaomi/miatoll_defconfig # Apply the default configuration
-          echo "Kernel configuration complete."
-          echo " " # Blank echo for spacing
+          echo "📥 Downloading LLVM Clang 21.1.0-rc1..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Fetching LLVM Clang... 📥
+          EOF
+          curl -LSs https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0-rc1/LLVM-21.1.0-rc1-Linux-X64.tar.xz -o llvm.tar.xz
+          tar -xvf llvm.tar.xz
+          mv LLVM-21.1.0-rc1-Linux-X64 llvm
+          echo "✅ LLVM Clang downloaded and extracted!"
 
-      - name: 🚀 Compiling Kernel... # Step to compile the kernel
-        working-directory: ${{ env.KERNEL_SOURCE_DIR }}
+      # Step 5: Set Environment Variables
+      - name: 🌍 Set Environment Variables
         run: |
-          echo " " # Blank echo for spacing
-          echo "🚀 Starting kernel compilation..."
-          # Get the clang version to be used in AnyKernel3 script later
-          CLANG_VERSION=$(clang --version | head -n 1 | awk '{print $4}')
-          echo "CLANG_VERSION=$CLANG_VERSION" >> $GITHUB_ENV # Store clang version as an environment variable
-          echo "Using Clang version: $CLANG_VERSION"
+          echo "🌍 Configuring environment variables..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Setting up the environment... 🌍
+          EOF
+          echo "PATH=$(pwd)/llvm/bin:$PATH" >> $GITHUB_ENV
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
+          echo "CROSS_COMPILE_ARM32=arm-linux-gnueabihf-" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_USER=MINHAZ" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_HOST=POTATO" >> $GITHUB_ENV
+          echo "✅ Environment variables set!"
 
-          # Compile the kernel using the specified arguments and LLVM toolchain
-          make -j$(nproc) O=out \
-            ARCH=${{ env.ARCH }} \
-            SUBARCH=${{ env.SUBARCH }} \
+      # Step 6: Verify Toolchain Setup
+      - name: 🔍 Verify Toolchain Setup
+        run: |
+          echo "🔍 Verifying toolchain setup..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Checking the toolchain... 🔍
+          EOF
+          clang --version
+          aarch64-linux-gnu-gcc --version
+          arm-linux-gnueabihf-gcc --version
+          ccache --version
+          echo "✅ Toolchain verified!"
+
+      # Step 7: Checkout Kernel Source
+      - name: 📚 Checkout Kernel Source
+        run: |
+          echo "📚 Cloning kernel source..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Fetching kernel source... 📚
+          EOF
+          git clone --depth 1 https://github.com/xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250 -b lineage-22.2 kernel
+          echo "✅ Kernel source cloned!"
+
+      # Step 8: Clean Kernel Source
+      - name: 🧹 Clean Kernel Source
+        run: |
+          echo "🧹 Cleaning kernel source..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Cleaning up with mrproper... 🧹
+          EOF
+          cd kernel
+          make mrproper
+          make clean
+          echo "✅ Kernel source cleaned!"
+
+      # Step 9: Generate Defconfig
+      - name: ⚙️ Generate Defconfig
+        run: |
+          echo "⚙️ Generating defconfig..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Setting up defconfig... ⚙️
+          EOF
+          cd kernel
+          make O=out vendor/xiaomi/miatoll_defconfig
+          echo "✅ Defconfig generated!"
+
+      # Step 10: Compile Kernel
+      - name: 🔥 Compile Kernel
+        run: |
+          echo "🔥 Compiling kernel..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Building the kernel... 🔥
+          EOF
+          cd kernel
+          make O=out \
+            ARCH=arm64 \
+            SUBARCH=arm64 \
             CC="ccache clang" \
             CXX="ccache clang++" \
-            LD="ld.lld" \
-            AR="llvm-ar" \
-            NM="llvm-nm" \
-            OBJCOPY="llvm-objcopy" \
-            OBJDUMP="llvm-objdump" \
-            STRIP="llvm-strip" \
-            CROSS_COMPILE="${{ env.CROSS_COMPILE }}" \
-            CROSS_COMPILE_ARM32="${{ env.CROSS_COMPILE_ARM32 }}" \
-            KBUILD_BUILD_USER="${{ env.KBUILD_BUILD_USER }}" \
-            KBUILD_BUILD_HOST="${{ env.KBUILD_BUILD_HOST }}"
-          echo "Kernel compilation finished!"
-          echo " " # Blank echo for spacing
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabihf- \
+            -j$(nproc)
+          echo "✅ Kernel compiled successfully!"
 
-      - name: 📦 Checking out AnyKernel3... # Step to clone the AnyKernel3 repository
-        uses: actions/checkout@v4
+      # Step 11: Checkout AnyKernel3
+      - name: 📦 Checkout AnyKernel3
+        run: |
+          echo "📦 Cloning AnyKernel3..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Fetching AnyKernel3... 📦
+          EOF
+          git clone --depth 1 https://github.com/ImONE-Na/AnyKernel3 -b master AnyKernel3
+          echo "✅ AnyKernel3 cloned!"
+
+      # Step 12: Prepare AnyKernel3
+      - name: 🛠️ Prepare AnyKernel3
+        run: |
+          echo "🛠️ Preparing AnyKernel3..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Setting up AnyKernel3... 🛠️
+          EOF
+          cd AnyKernel3
+          # Copy kernel image and other files
+          cp ../kernel/out/arch/arm64/boot/Image.gz anykernel3/
+          cp ../kernel/out/arch/arm64/boot/dtbo.img anykernel3/
+          cp ../kernel/out/arch/arm64/boot/dtb.img anykernel3/
+          find ../kernel/out -name '*.ko' -exec cp {} anykernel3/modules/system/lib/modules/ \;
+          # Update anykernel.sh
+          sed -i 's@kernel.string=.*@kernel.string=Lineage Kernel@' anykernel3/anykernel.sh
+          sed -i 's@kernel.compiler=.*@kernel.compiler=LLVM Clang 21.1.0-rc1@' anykernel3/anykernel.sh
+          sed -i 's@kernel.version=.*@kernel.version=4.14.336@' anykernel3/anykernel.sh
+          echo "✅ AnyKernel3 prepared!"
+
+      # Step 13: Create Flashable ZIP
+      - name: 📦 Create Flashable ZIP
+        run: |
+          echo "📦 Creating flashable ZIP..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Zipping up the kernel... 📦
+          EOF
+          cd AnyKernel3
+          zip -r9 LineageKernel-Curtana.zip .
+          echo "✅ Flashable ZIP created!"
+
+      # Step 14: Upload Artifact
+      - name: 📤 Upload Flashable ZIP
+        uses: actions/upload-artifact@v4
         with:
-          repository: ImONE-Na/AnyKernel3 # AnyKernel3 repository
-          ref: master # Branch of AnyKernel3
-          path: ${{ env.ANYKERNEL_DIR }} # Path where AnyKernel3 will be cloned
-        env:
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
-
-      - name: 📋 Copying Kernel Components to AnyKernel3... # Step to move compiled files
+          name: LineageKernel-Curtana
+          path: AnyKernel3/LineageKernel-Curtana.zip
         run: |
-          echo " " # Blank echo for spacing
-          echo "📋 Copying compiled kernel components to AnyKernel3 directory..."
-          
-          # Copy the main kernel image
-          cp "${{ env.KERNEL_SOURCE_DIR }}/out/arch/arm64/boot/Image.gz" "${{ env.ANYKERNEL_DIR }}/"
-          echo "Copied Image.gz"
-
-          # Copy dtbo.img if it exists
-          if [ -f "${{ env.KERNEL_SOURCE_DIR }}/out/arch/arm64/boot/dtbo.img" ]; then
-            cp "${{ env.KERNEL_SOURCE_DIR }}/out/arch/arm64/boot/dtbo.img" "${{ env.ANYKERNEL_DIR }}/"
-            echo "Copied dtbo.img"
-          else
-            echo "dtbo.img not found at expected path, skipping."
-          fi
-
-          # Find and copy dtb.img if it exists separately (it might be integrated into Image.gz-dtb)
-          DTB_IMG=$(find "${{ env.KERNEL_SOURCE_DIR }}/out" -name "dtb.img" -print -quit)
-          if [ -n "$DTB_IMG" ]; then
-            cp "$DTB_IMG" "${{ env.ANYKERNEL_DIR }}/"
-            echo "Copied dtb.img from: $DTB_IMG"
-          else
-            echo "dtb.img not found, skipping. It might be integrated into Image.gz-dtb."
-          fi
-
-          # Create the modules directory structure within AnyKernel3
-          mkdir -p "${{ env.ANYKERNEL_DIR }}/modules/system/lib/modules"
-          echo "Created modules directory."
-
-          # Copy all compiled kernel modules (*.ko)
-          find "${{ env.KERNEL_SOURCE_DIR }}/out" -name "*.ko" -exec cp {} "${{ env.ANYKERNEL_DIR }}/modules/system/lib/modules/" \;
-          echo "Copied kernel modules (*.ko)"
-          echo "All necessary components copied."
-          echo " " # Blank echo for spacing
-
-      - name: 📝 Updating AnyKernel3 Script... # Step to modify anykernel.sh
-        working-directory: ${{ env.ANYKERNEL_DIR }}
-        run: |
-          echo " " # Blank echo for spacing
-          echo "📝 Updating anykernel.sh with kernel information..."
-          # Use sed with '@' as delimiter to replace strings in anykernel.sh
-          sed -i 's@kernel.string=.*@kernel.string=" Lineage Kernel "@g' anykernel.sh
-          sed -i 's@kernel.compiler=.*@kernel.compiler="${{ env.CLANG_VERSION }}"@g' anykernel.sh
-          sed -i 's@kernel.version=.*@kernel.version=4.14.336@g' anykernel.sh
-          echo "anykernel.sh updated."
-          echo " " # Blank echo for spacing
-
-      - name: 💾 Creating Flashable Zip... # Step to package the kernel into a flashable zip
-        working-directory: ${{ env.ANYKERNEL_DIR }}
-        run: |
-          echo " " # Blank echo for spacing
-          echo "💾 Creating the flashable AnyKernel3 zip..."
-          zip_name="LineageOS-Kernel-${{ env.KBUILD_BUILD_USER }}-${{ github.run_number }}.zip"
-          # Create the zip file, excluding the .git directory
-          zip -r9 "$zip_name" * -x .git
-          mv "$zip_name" ../ # Move the zip to the root of the workspace
-          echo "Flashable zip created: $zip_name"
-          echo " " # Blank echo for spacing
-
-      - name: ⬆️ Uploading Flashable Zip... # Step to upload the zip as an artifact
-        uses: actions/upload-artifact@v4 # Action to upload artifacts
-        with:
-          name: lineage-kernel-zip # Name of the artifact
-          path: LineageOS-Kernel-*.zip # Path to the zip file
-        env:
-          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
-        run: |
-          echo " " # Blank echo for spacing
-          echo "⬆️ Flashable zip uploaded as artifact!"
-          echo " " # Blank echo for spacing
-
-      # ASCII art cat to celebrate workflow completion!
-      - name: 🎉 Workflow Complete!
-        run: |
-          echo " " # Blank echo for spacing
-          echo "  /\_/\  "
-          echo " ( =^.^= )"
-          echo "  >  U  < "
-          echo " " # Blank echo for spacing
-          echo "Congratulations! The LineageOS Kernel Compilation Workflow is complete!"
-          echo "You can find the flashable zip in the workflow artifacts."
-          echo " " # Blank echo for spacing
+          echo "📤 Uploading flashable ZIP..."
+          cat << EOF
+          /_/\  
+         ( o.o ) 
+          > ^ <
+          Uploading the kernel ZIP... 📤
+          EOF
+          echo "✅ Artifact uploaded!"
