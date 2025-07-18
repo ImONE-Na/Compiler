@@ -31,7 +31,7 @@ jobs:
             ██████╔╝██║██╔██╗ ██║  ██║  ███████║██║      ██║    ██║██║    ██║█████╗
             ██╔══██╗██║██║╚██╗██║  ██║  ██╔══██║██║      ╚██╗ ██╔╝██║    ██║██╔══╝
             ██║  ██║██║██║ ╚████║  ██║  ██║  ██║███████╗ ╚████╔╝ ╚██████╔╝███████╗
-            ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝  ╚═╝╚══════╝  ╚══╝  ╚═════╝ ╚══════╝
+            ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═════╝ ╚══════╝
           EOF
           sudo dpkg --add-architecture i386 # Add i386 architecture
           sudo apt-get update
@@ -73,7 +73,7 @@ jobs:
           EOF
           git clone --depth=1 https://github.com/xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250 -b lineage-22.2 $GITHUB_WORKSPACE/kernel
 
-      - name: '📥 Cloning AOSP Clang Compiler'
+      - name: '📥 Downloading and Extracting ZyCromerZ Clang'
         run: |
           cat << "EOF"
                 /\    ____   ___   ____    _   _   ____    _   
@@ -83,10 +83,28 @@ jobs:
             /_/    \\_\ \_\\ \_\\ \_\\ | |\  |\_\ \_\\_\\ 
           /_/    \\____/ \___/ \____/ |_| \_| \____//_/    \\_\
           EOF
-          # Clone the parent repository and then move the specific clang version
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 -b main $GITHUB_WORKSPACE/clang_temp
-          mkdir -p $GITHUB_WORKSPACE/clang
-          mv $GITHUB_WORKSPACE/clang_temp/clang-r547379 $GITHUB_WORKSPACE/clang/bin
+          CLANG_URL="https://github.com/ZyCromerZ/Clang/releases/download/22.0.0git-20250717-release/Clang-22.0.0git-20250717.tar.gz"
+          CLANG_DIR_NAME="Clang-22.0.0git-20250717" # This is the expected top-level directory inside the tarball
+
+          echo "Downloading Clang from: $CLANG_URL"
+          curl -LSs "$CLANG_URL" -o clang.tar.gz
+
+          echo "Creating Clang directory: $GITHUB_WORKSPACE/clang"
+          mkdir -p "$GITHUB_WORKSPACE/clang"
+
+          echo "Extracting Clang tarball..."
+          tar -xf clang.tar.gz -C "$GITHUB_WORKSPACE/clang"
+
+          # Verify extraction and set CLANG_PATH dynamically
+          if [ -d "$GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME" ]; then
+              echo "Clang extracted to: $GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME"
+              # Set the CLANG_PATH environment variable for subsequent steps
+              echo "CLANG_PATH=$GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME/bin" >> $GITHUB_ENV
+              echo "PATH=$GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME/bin:$PATH" >> $GITHUB_ENV
+          else
+              echo "Error: Expected Clang directory '$CLANG_DIR_NAME' not found after extraction."
+              exit 1
+          fi
 
       - name: '📥 Cloning AnyKernel3'
         run: |
@@ -100,13 +118,13 @@ jobs:
           git clone --depth=1 https://github.com/ImONE-Na/AnyKernel3 -b master $GITHUB_WORKSPACE/AnyKernel3
 
       # ----------------------------------------------------------------------------------------
-      # ⚙️ 4. Setting Up The Build Environment
+      # ⚙️ 4. Setting Up The Build Environment (Removed redundant CLANG_PATH/PATH setting here)
       # ----------------------------------------------------------------------------------------
       - name: '⚙️ Setting Up Environment Variables'
         run: |
           cat << "EOF"
             ______    __  __    __  __    ______    ______    ______      ______    __    __ 
-           /\ ___\ /\ \_\ \   /\ \/\ \   /\ __ \   /\__ _\ /\ __ \   /\ == \   /\ '-./  \"
+           /\ ___\ /\ \_\ \   /\ \/\ \   /\ __ \   /\__ _ \/\ __ \   /\ == \   /\ '-./  \"
            \ \ __\ \ \  __ \  \ \ \_\ \  \ \ \/\ \  \/_/\ \/ \ \ \/\ \  \ \ __<   \ \ \-./\ \ 
             \ \_____\\ \_\ \_\  \ \_____\  \ \_____\    \ \_\  \ \_____\  \ \_\ \_\  \ \_\ \ \_\"
              \/_____/ \/_/\/_/   \/_____/   \/_____/     \/_/   \/_____/   \/_/ /_/   \/_/  \/_/"
@@ -115,11 +133,7 @@ jobs:
           echo "KBUILD_BUILD_USER=MINHAZ" >> $GITHUB_ENV
           echo "KBUILD_BUILD_HOST=POTATO" >> $GITHUB_ENV
 
-          # Set Clang path
-          echo "CLANG_PATH=$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_ENV
-          echo "PATH=$GITHUB_WORKSPACE/clang/bin:$PATH" >> $GITHUB_ENV
-
-          # Set cross compile variables
+          # CLANG_PATH and PATH are now set in the previous step after extraction
           echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
           echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
           echo "ARCH=arm64" >> $GITHUB_ENV
