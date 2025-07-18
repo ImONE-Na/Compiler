@@ -137,7 +137,9 @@ jobs:
                HOST_LDFLAGS="" \
                HOST_CPPFLAGS="" \
                HOST_ASFLAGS="" \
-               HOST_AFLAGS="" # Added comprehensive host flag clearing for all host tool compilation
+               HOST_AFLAGS="" \
+               KBUILD_HOSTCFLAGS="" \
+               KBUILD_HOSTLDFLAGS="" # Added KBUILD_HOSTCFLAGS and KBUILD_HOSTLDFLAGS
           echo " "
           echo "🎉 Kernel compilation finished successfully!"
           echo " "
