@@ -34,7 +34,7 @@ jobs:
         echo "--> Setting up build environment..."
         echo "Installing essential build dependencies..."
         sudo apt update
-        sudo apt install -y build-essential device-tree-compiler ninja-build libsepol1-dev flex bison libssl-dev libelf-dev bc cpio git python3-pip
+        sudo apt install -y build-essential device-tree-compiler ninja-build libsepol-dev flex bison libssl-dev libelf-dev bc cpio git python3-pip
 
         echo "Installing GNU ARM toolchains..."
         sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
