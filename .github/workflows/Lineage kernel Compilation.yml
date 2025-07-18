@@ -1,29 +1,29 @@
 name: Build Curtana Lineage Kernel
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Specify the runner environment
 
     steps:
+    # Step 1: Checkout the kernel source repository
     - name: Checkout Kernel Source
-      shell: bash
       run: |
         echo "--> Checking out kernel source..."
         git clone --depth=1 https://github.com/xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250.git -b lineage-22.2 kernel
         echo "Kernel source checkout complete."
 
+    # Step 2: Checkout the AnyKernel3 repository
     - name: Checkout AnyKernel3
-      shell: bash
       run: |
         echo "--> Checking out AnyKernel3..."
         git clone --depth=1 https://github.com/ImONE-Na/AnyKernel3.git -b master AnyKernel3
         echo "AnyKernel3 checkout complete."
 
+    # Step 3: Set up the build environment by installing dependencies and LLVM
     - name: Set up Build Environment
-      shell: bash
       run: |
         echo "--> Setting up build environment..."
         echo "Installing essential build dependencies..."
@@ -42,7 +42,7 @@ jobs:
         echo "Setting LLVM environment variables..."
         # Set LLVM_TOOLCHAIN_PATH as an environment variable for subsequent steps
         echo "LLVM_TOOLCHAIN_PATH=$GITHUB_WORKSPACE/llvm-toolchain" >> $GITHUB_ENV
-        # Add LLVM bin directory to PATH for subsequent steps
+        # Add LLVM bin directory to PATH for all subsequent steps in this job
         echo "$GITHUB_WORKSPACE/llvm-toolchain/bin" >> $GITHUB_PATH 
         
         echo "Clang version:"
@@ -56,51 +56,50 @@ jobs:
         which arm-linux-gnueabihf-gcc && echo "arm-linux-gnueabihf-gcc is installed." || { echo "Error: arm-linux-gnueabihf-gcc not found!"; exit 1; }
         which aarch64-linux-gnu-gcc && echo "aarch64-linux-gnu-gcc is installed." || { echo "Error: aarch64-linux-gnu-gcc not found!"; exit 1; }
         which clang && echo "clang is installed." || { echo "Error: clang not found!"; exit 1; }
-        which ccache && echo "ccache is installed." || { echo "Error: ccache not found!"; exit 1; } # Added ccache check here
+        which ccache && echo "ccache is installed." || { echo "Error: ccache not found!"; exit 1; }
         echo "Environment setup complete."
 
-    - name: Initialize ccache
-      # This step only uses the ccache action for caching
+    # Step 4: Initialize ccache using the dedicated GitHub Action
+    # This step ONLY uses 'uses:'
+    - name: Initialize ccache (Action)
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ github.job }}
         max-size: 5G
 
+    # Step 5: Configure ccache specific environment variables
+    # This step ONLY uses 'run:'
     - name: Configure ccache Environment Variables
-      # This step only runs shell commands to set ccache environment variables
-      shell: bash
       run: |
         echo "--> Configuring ccache environment variables..."
-        # Ensure ccache executable path is set for the build environment
+        # CCACHE_EXEC should point to the ccache binary, usually found in PATH
         echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
         echo "CCACHE_MAXSIZE=5G" >> $GITHUB_ENV
         echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
         echo "CCACHE_NLEVELS=2" >> $GITHUB_ENV
         echo "CCACHE_SLOPPINESS=time_macros,file_macro,system_headers" >> $GITHUB_ENV
-        ccache -s
+        ccache -s # Show ccache stats
         echo "ccache environment variables set."
         
+    # Step 6: Configure the kernel with the defconfig
     - name: Configure Kernel
-      shell: bash
       working-directory: kernel
       run: |
         echo "--> Configuring kernel..."
         make O=out ARCH=arm64 SUBARCH=arm64 vendor/xiaomi/miatoll_defconfig
         echo "Kernel configuration complete."
 
+    # Step 7: Compile the kernel
     - name: Compile Kernel
-      shell: bash
       working-directory: kernel
       env:
         ARCH: arm64
         SUBARCH: arm64
         CC: "ccache clang"
         CXX: "ccache clang++"
-        # Set CROSS_COMPILE and CROSS_COMPILE_ARM32 to point to GNU toolchains
         CROSS_COMPILE: aarch64-linux-gnu-
         CROSS_COMPILE_ARM32: arm-linux-gnueabihf-
-        # LLVM-specific variables
         CLANG_TRIPLE: aarch64-linux-gnu-
         LD: ld.lld
         LLVM_AR: llvm-ar
@@ -108,9 +107,7 @@ jobs:
         LLVM_OBJCOPY: llvm-objcopy
         LLVM_OBJDUMP: llvm-objdump
         LLVM_STRIP: llvm-strip
-        # PATH is automatically handled by GITHUB_PATH added earlier.
-        # Ensure CCACHE_EXEC is correctly passed from env
-        CCACHE_EXEC: ${{ env.CCACHE_EXEC }}
+        # CCACHE_EXEC is already set in GITHUB_ENV from previous step
       run: |
         echo "--> Compiling kernel..."
         make -j$(nproc) O=out
@@ -119,8 +116,8 @@ jobs:
         ls -la out/arch/arm64/boot/
         ls -la out/modules/
 
+    # Step 8: Package the compiled kernel artifacts with AnyKernel3
     - name: Package Kernel with AnyKernel3
-      shell: bash
       run: |
         echo "--> Packaging kernel with AnyKernel3..."
         echo "Copying Image.gz to AnyKernel3 root..."
@@ -142,6 +139,7 @@ jobs:
         cd ..
         echo "Flashable zip created."
 
+    # Step 9: Upload the flashable zip as a GitHub artifact
     - name: Upload Kernel as Artifact
       uses: actions/upload-artifact@v4
       with:
