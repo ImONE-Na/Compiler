@@ -34,7 +34,8 @@ jobs:
         echo "--> Setting up build environment..."
         echo "Installing essential build dependencies..."
         sudo apt update
-        sudo apt install -y build-essential device-tree-compiler ninja-build libsepol-dev flex bison libssl-dev libelf-dev bc cpio git python3-pip
+        # Install ccache explicitly here
+        sudo apt install -y build-essential device-tree-compiler ninja-build libsepol-dev flex bison libssl-dev libelf-dev bc cpio git python3-pip ccache
 
         echo "Installing GNU ARM toolchains..."
         sudo apt install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
@@ -42,18 +43,20 @@ jobs:
         echo "Downloading LLVM toolchain..."
         curl -LSs https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0-rc1/LLVM-21.1.0-rc1-Linux-X64.tar.xz -o llvm.tar.xz
         echo "Extracting LLVM toolchain..."
-        mkdir llvm-toolchain
+        mkdir -p llvm-toolchain # Use -p for safety
         tar -xf llvm.tar.xz -C llvm-toolchain --strip-components=1
         
         echo "Setting LLVM environment variables and adding to PATH..."
         # Set LLVM_TOOLCHAIN_PATH as an environment variable for subsequent steps
         echo "LLVM_TOOLCHAIN_PATH=$GITHUB_WORKSPACE/llvm-toolchain" >> $GITHUB_ENV
-        # Add LLVM bin directory to PATH for all subsequent steps in this job
+        
+        # Prepend LLVM bin directory to PATH for all subsequent steps in this job
+        # This ensures our custom clang is found before system clang
         echo "$GITHUB_WORKSPACE/llvm-toolchain/bin" >> $GITHUB_PATH 
         
-        echo "Verifying Clang version:"
+        echo "Verifying Clang version (should be from downloaded LLVM):"
+        which clang
         clang --version
-        echo "LLVM setup complete."
         
         echo "Verifying all necessary tools are in PATH and working..."
         which make && echo "make is installed." || { echo "Error: make not found!"; exit 1; }
@@ -79,7 +82,7 @@ jobs:
       shell: bash
       run: |
         echo "--> Configuring ccache environment variables..."
-        # CCACHE_EXEC should point to the ccache binary, which is already in PATH
+        # CCACHE_EXEC should point to the ccache binary, which is now installed and in PATH
         echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
         echo "CCACHE_MAXSIZE=5G" >> $GITHUB_ENV
@@ -150,7 +153,7 @@ jobs:
         cd AnyKernel3
         # Use full path to avoid issues if workspace changes
         zip -r9 ${{ github.workspace }}/Curtana-LineageOS-Kernel-${{ github.run_number }}.zip * -x .git README.md
-        cd ..
+        cd "..""
         echo "Flashable zip created."
 
     # Step 9: Upload the flashable zip as a GitHub artifact
