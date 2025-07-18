@@ -83,7 +83,8 @@ jobs:
             /_/    \\_\ \_\\ \_\\ \_\\ | |\  |\_\ \_\\_\\ 
           /_/    \\____/ \___/ \____/ |_| \_| \____//_/    \\_\
           EOF
-          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/clang-r547379 -b master $GITHUB_WORKSPACE/clang
+          # Changed -b master to -b main based on your provided URL
+          git clone --depth=1 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/clang-r547379 -b main $GITHUB_WORKSPACE/clang
 
       - name: '📥 Cloning AnyKernel3'
         run: |
@@ -106,7 +107,7 @@ jobs:
            /\ ___\ /\ \_\ \   /\ \/\ \   /\ __ \   /\__ _\ /\ __ \   /\ == \   /\ '-./  \"
            \ \ __\ \ \  __ \  \ \ \_\ \  \ \ \/\ \  \/_/\ \/ \ \ \/\ \  \ \ __<   \ \ \-./\ \ 
             \ \_____\\ \_\ \_\  \ \_____\  \ \_____\    \ \_\  \ \_____\  \ \_\ \_\  \ \_\ \ \_\"
-             \/_____/ \/_/\/_/   \/_____/   \/_____/     \/_/   \/_____/   \/_/ /_/   \/_/  \/_/
+             \/_____/ \/_/\/_/   \/_____/   \/_____/     \/_/   \/_____/   \/_/ /_/   \/_/  \/_/"
           EOF
           # Set build user and host
           echo "KBUILD_BUILD_USER=MINHAZ" >> $GITHUB_ENV
@@ -150,7 +151,7 @@ jobs:
               _____                      _ _       
             / ____|                    | (_)       
            | |   ___ _ __ ___ _ __  _   _| |_ ___ _ __ 
-           | |  / _ \| '_ \` _ \| '_ \| | | | | / __| '__|
+           | |  / _ \| '_ \` _ \| '_ \| | | | | / __| '__|"
            | |___| (_) | | | | | | |_) | |_| | | \__ \ |   
             \_____\___/|_| |_| |_| .__/ \__,_|_|_|___/_|   
                                  | |                     
