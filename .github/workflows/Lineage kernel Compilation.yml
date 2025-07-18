@@ -1,226 +1,239 @@
-name: 'Lineage kernel Compilation 🐧'
+name: Lineage kernel Compilation
 
-#
-# 🚀 Workflow Triggers
-#
-# This workflow will automatically start when you push new commits to the 'main' branch.
-#
 on:
   push:
     branches:
-      - main
-  workflow_dispatch: # Allows you to manually trigger the workflow from the GitHub Actions tab
+      - main # This workflow will trigger on pushes to the 'main' branch
 
 jobs:
-  build:
-    name: '🏗️ Kernel Building ...'
-    runs-on: ubuntu-latest
+  build-kernel:
+    name: 🏗️Kernel Building ... # Job name with an emoji
+    runs-on: ubuntu-latest # Specifies the operating system for the job
+
+    # Define environment variables that will be used throughout the workflow
+    env:
+      KBUILD_BUILD_USER: MINHAZ # User name for the kernel build
+      KBUILD_BUILD_HOST: POTATO # Host name for the kernel build
+      ARCH: arm64 # Architecture for kernel compilation
+      SUBARCH: arm64 # Sub-architecture for kernel compilation
+      LLVM_TOOLCHAIN_VERSION: 21.1.0-rc1 # Version of the LLVM toolchain to download
+      LLVM_TOOLCHAIN_URL: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ env.LLVM_TOOLCHAIN_VERSION }}/LLVM-${{ env.LLVM_TOOLCHAIN_VERSION}}-Linux-X64.tar.xz # URL for LLVM toolchain
+      KERNEL_SOURCE_DIR: android_kernel_xiaomi_sm6250 # Directory name for the kernel source
+      ANYKERNEL_DIR: AnyKernel3 # Directory name for the AnyKernel3 repository
 
     steps:
-      # ----------------------------------------------------------------------------------------
-      # 🛠️ 1. Initial Setup & Checkout
-      # ----------------------------------------------------------------------------------------
-      - name: '📦 Initializing The Build Environment'
-        uses: actions/checkout@v4
-
-      - name: '🔧 Installing Dependencies'
+      # ASCII art cat to start the workflow with some flair!
+      - name: 😼
         run: |
-          cat << "EOF"
-            ██████╗ ██╗███╗    ██╗████████╗ █████╗ ██╗      ██╗    ██╗██╗    ██╗███████╗
-            ██╔══██╗██║████╗  ██║╚══██╔══╝██╔══██╗██║      ██║    ██║██║    ██║██╔════╝
-            ██████╔╝██║██╔██╗ ██║  ██║  ███████║██║      ██║    ██║██║    ██║█████╗
-            ██╔══██╗██║██║╚██╗██║  ██║  ██╔══██║██║      ╚██╗ ██╔╝██║    ██║██╔══╝
-            ██║  ██║██║██║ ╚████║  ██║  ██║  ██║███████╗ ╚████╔╝ ╚██████╔╝███████╗
-            ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝  ╚═╝  ╚═╝  ╚═╝╚══════╝  ╚═══╝  ╚═════╝ ╚══════╝
-          EOF
-          sudo dpkg --add-architecture i386 # Add i386 architecture
-          sudo apt-get update
-          # Install software-properties-common to add repositories if needed, though usually not for standard toolchains
-          sudo apt-get install -y software-properties-common
-          # Add the toolchain test repository for newer GCC versions if they are not in main
-          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-          sudo apt-get update
-          sudo apt-get install -y bc build-essential ccache curl device-tree-compiler \
-                                   flex git gnupg gperf imagemagick \
-                                   libncurses5-dev:i386 libreadline-dev:i386 zlib1g-dev:i386 libelf-dev \
-                                   liblz4-tool libncurses5-dev libsdl1.2-dev libsepol-dev libssl-dev \
-                                   libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools \
-                                   xsltproc zip zlib1g-dev ninja-build \
-                                   gcc-13-aarch64-linux-gnu gcc-13-arm-linux-gnueabi \
-                                   binutils-aarch64-linux-gnu binutils-arm-linux-gnueabi
+          echo " " # Blank echo for spacing
+          echo "  /\_/\  "
+          echo " ( o.o ) "
+          echo "  > ^ <  "
+          echo " " # Blank echo for spacing
+          echo "Meow! Starting the LineageOS Kernel Compilation Workflow!"
+          echo " " # Blank echo for spacing
 
-      # ----------------------------------------------------------------------------------------
-      # ⚡ 2. Ccache for Faster Builds
-      # ----------------------------------------------------------------------------------------
-      - name: '⚡ Setting Up Build Cache'
-        uses: hendrikmuhs/ccache-action@v1.2
+      - name: 🐾 Checking out Kernel Source... # Step to clone the kernel source
+        uses: actions/checkout@v4 # Action to check out the repository
         with:
-          key: ${{ github.job }}
-          max-size: 5G # Set cache size to 5GB
+          repository: xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250 # Kernel source repository
+          ref: lineage-22.2 # Branch of the kernel source
+          path: ${{ env.KERNEL_SOURCE_DIR }} # Path where the kernel source will be cloned
+        env:
+          # This is sometimes needed for older runners or specific actions, though v4 is generally secure.
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true' 
 
-      # ----------------------------------------------------------------------------------------
-      # 📥 3. Cloning All Necessary Repositories
-      # ----------------------------------------------------------------------------------------
-      - name: '📥 Cloning Kernel Source'
+      - name: ⚡ Setting up ccache... # Step to configure ccache for faster compilation
+        uses: hendrikmuhs/ccache-action@v1.2 # Action for ccache setup
+        with:
+          key: ${{ github.job }}-${{ github.ref }} # Unique key for cache
+          max-size: 5G # Maximum cache size
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+
+      - name: ⚙️ Downloading and Extracting LLVM Clang... # Step to get and set up the compiler
         run: |
-          cat << "EOF"
-            _  __ _   _    _          _     
-           | |/ /(_) | |  | |   ___   ___ | | _____ 
-           | ' /  _  | |  | | / _ \ / __|| |/ / __|
-           |  <  | | | |/\| | / _ \ / __|| |/ / __|
-           | . \ | | \  /\  /|  __/| (__ |   <\__ "
-           |_|\_\|_|  \/  \/  \___| \___||_|\_\___/
-          EOF
-          git clone --depth=1 https://github.com/xiaomi-sm6250-devs/android_kernel_xiaomi_sm6250 -b lineage-22.2 $GITHUB_WORKSPACE/kernel
+          echo " " # Blank echo for spacing
+          echo "⚙️ Downloading and extracting LLVM Clang toolchain..."
+          # Download the LLVM toolchain archive
+          wget "${{ env.LLVM_TOOLCHAIN_URL }}" -O llvm.tar.xz
+          # Extract the archive
+          tar -xf llvm.tar.xz
+          
+          # Set the path to the extracted LLVM directory
+          LLVM_PATH=$(pwd)/LLVM-${{ env.LLVM_TOOLCHAIN_VERSION}}-Linux-X64
+          # Export environment variables for subsequent steps
+          echo "LLVM_PATH=$LLVM_PATH" >> $GITHUB_ENV
+          echo "CROSS_COMPILE=$LLVM_PATH/bin/aarch64-linux-gnu-" >> $GITHUB_ENV # Cross-compile prefix for ARM64
+          echo "CROSS_COMPILE_ARM32=$LLVM_PATH/bin/arm-linux-gnueabihf-" >> $GITHUB_ENV # Cross-compile prefix for ARM32
+          echo "PATH=$LLVM_PATH/bin:$PATH" >> $GITHUB_ENV # Add LLVM bin to PATH
+          
+          echo "LLVM Clang setup complete. Verifying paths:"
+          echo "LLVM_PATH: $LLVM_PATH"
+          echo "CROSS_COMPILE: ${{ env.CROSS_COMPILE }}"
+          echo "CROSS_COMPILE_ARM32: ${{ env.CROSS_COMPILE_ARM32 }}"
+          echo "PATH: $PATH"
+          clang --version # Verify clang installation
+          echo " " # Blank echo for spacing
 
-      - name: '📥 Downloading and Extracting ZyCromerZ Clang'
+      - name: 🛠️ Installing Build Dependencies... # Step to install all necessary packages
         run: |
-          cat << "EOF"
-                /\    ____   ___   ____    _   _   ____    _   
-               /  \  / __ \ / _ \ / __ \  | \ | | / __ \  / \   
-              / /\ \ | | | || | | || | | | |  \| || |  | |/ _ \  
-             / ____ \| | | || | | || | | | | .  || |  | |/ ___ \ 
-            /_/    \\_\ \_\\ \_\\ \_\\ | |\  |\_\ \_\\_\\ 
-          /_/    \\____/ \___/ \____/ |_| \_| \____//_/    \\_\
-          EOF
-          CLANG_URL="https://github.com/ZyCromerZ/Clang/releases/download/22.0.0git-20250717-release/Clang-22.0.0git-20250717.tar.gz"
-          CLANG_DIR_NAME="Clang-22.0.0git-20250717" # This is the expected top-level directory inside the tarball
+          echo " " # Blank echo for spacing
+          echo "🛠️ Installing necessary build dependencies..."
+          sudo apt update # Update apt package list
+          # Install core build tools
+          sudo apt install -y build-essential device-tree-compiler ninja-build libsepol-dev
+          
+          # Add 32-bit architecture support for specific dependencies
+          echo "Adding 32-bit architecture and updating apt for 32-bit dependencies..."
+          sudo dpkg --add-architecture i386
+          sudo apt update
+          # Install common 32-bit libraries
+          sudo apt install -y libc6:i386 libncurses5:i386 libstdc++6:i386
+          
+          # Install GNU cross-compilers; often pull in libraries LLVM might implicitly depend on
+          echo "Installing GNU cross-compilers for potential library dependencies..."
+          sudo apt install -y gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          echo "Dependencies installed successfully."
+          echo " " # Blank echo for spacing
 
-          echo "Downloading Clang from: $CLANG_URL"
-          curl -LSs "$CLANG_URL" -o clang.tar.gz
+      - name: 🧹 Cleaning Kernel Source... # Step to clean the kernel build directory
+        working-directory: ${{ env.KERNEL_SOURCE_DIR }} # Execute commands in the kernel source directory
+        run: |
+          echo " " # Blank echo for spacing
+          echo "🧹 Performing mrproper and clean on kernel source..."
+          make O=out mrproper # Deep clean the kernel source tree
+          make O=out clean # Clean the build output directory
+          echo "Kernel source cleaned."
+          echo " " # Blank echo for spacing
 
-          echo "Creating Clang directory: $GITHUB_WORKSPACE/clang"
-          mkdir -p "$GITHUB_WORKSPACE/clang"
+      - name: 📝 Configuring Kernel... # Step to set up the kernel configuration
+        working-directory: ${{ env.KERNEL_SOURCE_DIR }}
+        run: |
+          echo " " # Blank echo for spacing
+          echo "📝 Configuring kernel with miatoll_defconfig..."
+          make O=out vendor/xiaomi/miatoll_defconfig # Apply the default configuration
+          echo "Kernel configuration complete."
+          echo " " # Blank echo for spacing
 
-          echo "Extracting Clang tarball..."
-          tar -xf clang.tar.gz -C "$GITHUB_WORKSPACE/clang"
+      - name: 🚀 Compiling Kernel... # Step to compile the kernel
+        working-directory: ${{ env.KERNEL_SOURCE_DIR }}
+        run: |
+          echo " " # Blank echo for spacing
+          echo "🚀 Starting kernel compilation..."
+          # Get the clang version to be used in AnyKernel3 script later
+          CLANG_VERSION=$(clang --version | head -n 1 | awk '{print $4}')
+          echo "CLANG_VERSION=$CLANG_VERSION" >> $GITHUB_ENV # Store clang version as an environment variable
+          echo "Using Clang version: $CLANG_VERSION"
 
-          # Verify extraction and set CLANG_PATH dynamically
-          if [ -d "$GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME" ]; then
-              echo "Clang extracted to: $GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME"
-              # Set the CLANG_PATH environment variable for subsequent steps
-              echo "CLANG_PATH=$GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME/bin" >> $GITHUB_ENV
-              echo "PATH=$GITHUB_WORKSPACE/clang/$CLANG_DIR_NAME/bin:$PATH" >> $GITHUB_ENV
+          # Compile the kernel using the specified arguments and LLVM toolchain
+          make -j$(nproc) O=out \
+            ARCH=${{ env.ARCH }} \
+            SUBARCH=${{ env.SUBARCH }} \
+            CC="ccache clang" \
+            CXX="ccache clang++" \
+            LD="ld.lld" \
+            AR="llvm-ar" \
+            NM="llvm-nm" \
+            OBJCOPY="llvm-objcopy" \
+            OBJDUMP="llvm-objdump" \
+            STRIP="llvm-strip" \
+            CROSS_COMPILE="${{ env.CROSS_COMPILE }}" \
+            CROSS_COMPILE_ARM32="${{ env.CROSS_COMPILE_ARM32 }}" \
+            KBUILD_BUILD_USER="${{ env.KBUILD_BUILD_USER }}" \
+            KBUILD_BUILD_HOST="${{ env.KBUILD_BUILD_HOST }}"
+          echo "Kernel compilation finished!"
+          echo " " # Blank echo for spacing
+
+      - name: 📦 Checking out AnyKernel3... # Step to clone the AnyKernel3 repository
+        uses: actions/checkout@v4
+        with:
+          repository: ImONE-Na/AnyKernel3 # AnyKernel3 repository
+          ref: master # Branch of AnyKernel3
+          path: ${{ env.ANYKERNEL_DIR }} # Path where AnyKernel3 will be cloned
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+
+      - name: 📋 Copying Kernel Components to AnyKernel3... # Step to move compiled files
+        run: |
+          echo " " # Blank echo for spacing
+          echo "📋 Copying compiled kernel components to AnyKernel3 directory..."
+          
+          # Copy the main kernel image
+          cp "${{ env.KERNEL_SOURCE_DIR }}/out/arch/arm64/boot/Image.gz" "${{ env.ANYKERNEL_DIR }}/"
+          echo "Copied Image.gz"
+
+          # Copy dtbo.img if it exists
+          if [ -f "${{ env.KERNEL_SOURCE_DIR }}/out/arch/arm64/boot/dtbo.img" ]; then
+            cp "${{ env.KERNEL_SOURCE_DIR }}/out/arch/arm64/boot/dtbo.img" "${{ env.ANYKERNEL_DIR }}/"
+            echo "Copied dtbo.img"
           else
-              echo "Error: Expected Clang directory '$CLANG_DIR_NAME' not found after extraction."
-              exit 1
+            echo "dtbo.img not found at expected path, skipping."
           fi
 
-      - name: '📥 Cloning AnyKernel3'
+          # Find and copy dtb.img if it exists separately (it might be integrated into Image.gz-dtb)
+          DTB_IMG=$(find "${{ env.KERNEL_SOURCE_DIR }}/out" -name "dtb.img" -print -quit)
+          if [ -n "$DTB_IMG" ]; then
+            cp "$DTB_IMG" "${{ env.ANYKERNEL_DIR }}/"
+            echo "Copied dtb.img from: $DTB_IMG"
+          else
+            echo "dtb.img not found, skipping. It might be integrated into Image.gz-dtb."
+          fi
+
+          # Create the modules directory structure within AnyKernel3
+          mkdir -p "${{ env.ANYKERNEL_DIR }}/modules/system/lib/modules"
+          echo "Created modules directory."
+
+          # Copy all compiled kernel modules (*.ko)
+          find "${{ env.KERNEL_SOURCE_DIR }}/out" -name "*.ko" -exec cp {} "${{ env.ANYKERNEL_DIR }}/modules/system/lib/modules/" \;
+          echo "Copied kernel modules (*.ko)"
+          echo "All necessary components copied."
+          echo " " # Blank echo for spacing
+
+      - name: 📝 Updating AnyKernel3 Script... # Step to modify anykernel.sh
+        working-directory: ${{ env.ANYKERNEL_DIR }}
         run: |
-          cat << "EOF"
-                _   _ _   _ _ _ ____ ____ _ _ 
-               / \  / \/ \ / \/ \/ \/  __\/  _ \/ \/ \\
-               | |  | || || || || |||  \/|| / \|| || |
-               | |_/\| || || || || |||    || \_/|| || |
-               \____/\_/\_/\_/\_/\_/\_/\_/ \____/\_/\_/"
-          EOF
-          git clone --depth=1 https://github.com/ImONE-Na/AnyKernel3 -b master $GITHUB_WORKSPACE/AnyKernel3
+          echo " " # Blank echo for spacing
+          echo "📝 Updating anykernel.sh with kernel information..."
+          # Use sed with '@' as delimiter to replace strings in anykernel.sh
+          sed -i 's@kernel.string=.*@kernel.string=" Lineage Kernel "@g' anykernel.sh
+          sed -i 's@kernel.compiler=.*@kernel.compiler="${{ env.CLANG_VERSION }}"@g' anykernel.sh
+          sed -i 's@kernel.version=.*@kernel.version=4.14.336@g' anykernel.sh
+          echo "anykernel.sh updated."
+          echo " " # Blank echo for spacing
 
-      # ----------------------------------------------------------------------------------------
-      # ⚙️ 4. Setting Up The Build Environment (Removed redundant CLANG_PATH/PATH setting here)
-      # ----------------------------------------------------------------------------------------
-      - name: '⚙️ Setting Up Environment Variables'
+      - name: 💾 Creating Flashable Zip... # Step to package the kernel into a flashable zip
+        working-directory: ${{ env.ANYKERNEL_DIR }}
         run: |
-          cat << "EOF"
-            ______    __  __    __  __    ______    ______    ______      ______    __    __ 
-           /\ ___\ /\ \_\ \   /\ \/\ \   /\ __ \   /\__ _ \/\ __ \   /\ == \   /\ '-./  \"
-           \ \ __\ \ \  __ \  \ \ \_\ \  \ \ \/\ \  \/_/\ \/ \ \ \/\ \  \ \ __<   \ \ \-./\ \ 
-            \ \_____\\ \_\ \_\  \ \_____\  \ \_____\    \ \_\  \ \_____\  \ \_\ \_\  \ \_\ \ \_\"
-             \/_____/ \/_/\/_/   \/_____/   \/_____/     \/_/   \/_____/   \/_/ /_/   \/_/  \/_/"
-          EOF
-          # Set build user and host
-          echo "KBUILD_BUILD_USER=MINHAZ" >> $GITHUB_ENV
-          echo "KBUILD_BUILD_HOST=POTATO" >> $GITHUB_ENV
+          echo " " # Blank echo for spacing
+          echo "💾 Creating the flashable AnyKernel3 zip..."
+          zip_name="LineageOS-Kernel-${{ env.KBUILD_BUILD_USER }}-${{ github.run_number }}.zip"
+          # Create the zip file, excluding the .git directory
+          zip -r9 "$zip_name" * -x .git
+          mv "$zip_name" ../ # Move the zip to the root of the workspace
+          echo "Flashable zip created: $zip_name"
+          echo " " # Blank echo for spacing
 
-          # CLANG_PATH and PATH are now set in the previous step after extraction
-          echo "CROSS_COMPILE=aarch64-linux-gnu-" >> $GITHUB_ENV
-          echo "CROSS_COMPILE_ARM32=arm-linux-gnueabi-" >> $GITHUB_ENV
-          echo "ARCH=arm64" >> $GITHUB_ENV
-          echo "SUBARCH=arm64" >> $GITHUB_ENV
-
-      # ----------------------------------------------------------------------------------------
-      # 🧹 5. Cleaning The Kernel Source Tree
-      # ----------------------------------------------------------------------------------------
-      - name: '🧹 Cleaning Kernel Source'
-        run: |
-          cat << "EOF"
-              _____ _     _____          _     
-            / ____| |   / ____|        (_)     
-           | |    | |  | (___   ___ _ __ _ _ __  
-           | |    | |   \___ \ / __| '__| | '_ \ 
-           | |____| |________) | (__| |  | | |_) |
-            \_____|______|_____/ \___|_|  |_| .__/ 
-                                           | |   
-                                           |_|   
-          EOF
-          cd $GITHUB_WORKSPACE/kernel
-          make mrproper
-          make clean
-
-      # ----------------------------------------------------------------------------------------
-      # 🛠️ 6. Compiling The Kernel
-      # ----------------------------------------------------------------------------------------
-      - name: '🛠️ Compiling The Kernel'
-        run: |
-          cat << "EOF"
-              _____                      _ _       
-            / ____|                    | (_)       
-           | |   ___ _ __ ___ _ __  _   _| |_ ___ _ __ 
-           | |  / _ \| '_ \` _ \| '_ \| | | | | / __| '__|"
-           | |___| (_) | | | | | | |_) | |_| | | \__ \ |   
-            \_____\___/|_| |_| |_| .__/ \__,_|_|_|___/_|   
-                                 | |                     
-                                 |_|                     
-          EOF
-          cd $GITHUB_WORKSPACE/kernel
-          # Configure the kernel
-          make O=out vendor/xiaomi/miatoll_defconfig
-
-          # Start the compilation
-          make -j$(nproc --all) O=out \
-                CC="ccache clang" \
-                CXX="ccache clang++" \
-                CLANG_TRIPLE="aarch64-linux-gnu-" \
-                CROSS_COMPILE=${{ env.CROSS_COMPILE }} \
-                CROSS_COMPILE_ARM32=${{ env.CROSS_COMPILE_ARM32 }} \
-                ARCH=${{ env.ARCH }} \
-                SUBARCH=${{ env.SUBARCH }}
-
-      # ----------------------------------------------------------------------------------------
-      # 📦 7. Packaging into a Flashable Zip
-      # ----------------------------------------------------------------------------------------
-      - name: '📦 Packaging Flashable Zip'
-        run: |
-          cat << "EOF"
-            ____           _              ______ _ _     
-           |  _ \         | |            | ____(_) |     
-           | |_) | __ _ ___| | _____ _ __ ___ | |__   _| | ___ 
-           |  _ < / _\` |/ __| |/ / _ \ '__/ __| |  __| | | |/ _ \
-           | |_) | (_| | (__|   <  __/ |  \__ \ | |    | | |  __/
-           |____/ \__,_|\___|_|\_\___|_|  |___/ |_|    |_|_|\___|"
-          EOF
-          # Copy kernel images and modules
-          cp $GITHUB_WORKSPACE/kernel/out/arch/arm64/boot/Image.gz $GITHUB_WORKSPACE/AnyKernel3/
-          cp $GITHUB_WORKSPACE/kernel/out/arch/arm64/boot/dtb.img $GITHUB_WORKSPACE/AnyKernel3/
-          cp $GITHUB_WORKSPACE/kernel/out/arch/arm64/boot/dtbo.img $GITHUB_WORKSPACE/AnyKernel3/
-          find $GITHUB_WORKSPACE/kernel/out/ -name "*.ko" -exec cp {} $GITHUB_WORKSPACE/AnyKernel3/modules/ \;
-
-          # Modify AnyKernel.sh
-          cd $GITHUB_WORKSPACE/AnyKernel3
-          CLANG_VERSION=$(${{ env.CLANG_PATH }}/clang --version | head -n 1)
-          sed -i 's@kernel.string=.*@kernel.string="Lineage Kernel by MINHAZ"@' anykernel.sh
-          sed -i "s@kernel.compiler=.*@kernel.compiler=\"${CLANG_VERSION}\"@" anykernel.sh
-          sed -i 's@kernel.version=.*@kernel.version=4.14.336@' anykernel.sh
-
-          # Create the zip
-          zip -r9 Lineage-Kernel-curtana.zip * -x .git README.md *placeholder
-
-      # ----------------------------------------------------------------------------------------
-      # 📤 8. Uploading The Artifact
-      # ----------------------------------------------------------------------------------------
-      - name: '📤 Uploading Kernel Zip'
-        uses: actions/upload-artifact@v4
+      - name: ⬆️ Uploading Flashable Zip... # Step to upload the zip as an artifact
+        uses: actions/upload-artifact@v4 # Action to upload artifacts
         with:
-          name: Lineage-Kernel-curtana
-          path: $GITHUB_WORKSPACE/AnyKernel3/Lineage-Kernel-curtana.zip
+          name: lineage-kernel-zip # Name of the artifact
+          path: LineageOS-Kernel-*.zip # Path to the zip file
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+        run: |
+          echo " " # Blank echo for spacing
+          echo "⬆️ Flashable zip uploaded as artifact!"
+          echo " " # Blank echo for spacing
+
+      # ASCII art cat to celebrate workflow completion!
+      - name: 🎉 Workflow Complete!
+        run: |
+          echo " " # Blank echo for spacing
+          echo "  /\_/\  "
+          echo " ( =^.^= )"
+          echo "  >  U  < "
+          echo " " # Blank echo for spacing
+          echo "Congratulations! The LineageOS Kernel Compilation Workflow is complete!"
+          echo "You can find the flashable zip in the workflow artifacts."
+          echo " " # Blank echo for spacing
