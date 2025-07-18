@@ -57,24 +57,32 @@ jobs:
         
         echo "Environment setup complete."
 
-    - name: Set up ccache
+    - name: Initialize ccache
+      # This step uses the ccache action to restore/save the cache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ github.job }}
         max-size: 5G
-      env:
-        CACHE_EXEC: $(which ccache)
+
+    - name: Configure ccache Environment Variables
+      # This step sets environment variables for ccache for subsequent compilation steps
       shell: bash
       run: |
-        echo "--> Setting up ccache..."
-        echo "CCACHE_EXEC=$(which ccache)" >> $GITHUB_ENV
+        echo "--> Configuring ccache environment variables..."
+        # Ensure ccache is in PATH from the previous setup step if not already
+        export CCACHE_EXEC=$(which ccache)
+        if [ -z "$CCACHE_EXEC" ]; then
+          echo "Error: ccache executable not found in PATH."
+          exit 1
+        fi
+        echo "CCACHE_EXEC=$CCACHE_EXEC" >> $GITHUB_ENV
         echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
         echo "CCACHE_MAXSIZE=5G" >> $GITHUB_ENV
         echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
         echo "CCACHE_NLEVELS=2" >> $GITHUB_ENV
         echo "CCACHE_SLOPPINESS=time_macros,file_macro,system_headers" >> $GITHUB_ENV
         ccache -s
-        echo "ccache setup complete."
+        echo "ccache environment variables set."
         
     - name: Configure Kernel
       shell: bash
